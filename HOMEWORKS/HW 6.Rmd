@@ -1,0 +1,273 @@
+---
+title: "Homework 6"
+author: "Raul Miranda"
+date: "20 Oct 2025"
+output: html_document
+---
+
+**Objective**:
+
+You will use R to analyze the built-in airquality dataset, applying descriptive statistics techniques to explore environmental data. The assignment covers measures of central tendency, spread, histograms, boxplots, scatterplots, correlations, and summary tables, aligning with the Week 6 agenda on Descriptive Statistics.
+
+**Dataset**
+
+Source: Built-in R dataset airquality.
+
+Description: Contains 153 observations of daily air quality measurements in New York from May to September 1973.
+
+Variables (selected for this assignment):
+
+- Ozone: Mean ozone concentration in parts per billion (ppb, numeric).
+- Temp: Maximum daily temperature in Fahrenheit (numeric).
+- Wind: Average wind speed in miles per hour (numeric).
+- Month: Month of the year (5 = May, 6 = June, ..., 9 = September, categorical).
+
+**Notes**
+
+-The airquality dataset has missing values in Ozone and Solar.R. The code uses na.rm = TRUE or use = "complete.obs" to handle them.
+
+-If you encounter errors, check that tidyverse and corrplot are installed and loaded.
+
+-Feel free to modify plot aesthetics (e.g., colors, binwidth) to enhance clarity.
+
+**Instructions**:
+
+Complete the following tasks using R to analyze the airquality dataset. Submit your Rpubs link that includes code, outputs (tables and plots), and written interpretations for each task. Ensure you load the dataset using data(airquality) and install/load the tidyverse and corrplot packages.
+
+
+```{r}
+#Load your dataset and check structure, NAs, show 6 lines
+
+library(tidyverse)
+library(corrplot)
+library(RColorBrewer)
+
+data("airquality")
+
+str(airquality)                          # showing 153 obs. of  6 variables, int/num
+
+print (colSums(is.na(airquality)))       # showing the NA in Ozone and Solar.R
+
+head(airquality)
+
+```
+
+
+
+
+**Tasks and Questions**
+
+#### Task 1: Measures of Central Tendency and Spread
+
+Using functions you learned this week, compute mean, median, standard deviation, min, and max separately for Ozone, Temp, and Wind.
+
+```{r}
+#Your code for Ozone goes here
+
+airquality |>
+  
+  summarize(                            # for Ozone get:
+          mean(Ozone, na.rm = TRUE),    #  mean
+          median (Ozone, na.rm = TRUE), #  median
+          sd(Ozone, na.rm = TRUE),      #  std dev
+          min(Ozone, na.rm = TRUE),                   #  min
+          max(Ozone, na.rm = TRUE)                    #  max
+  )
+
+```
+
+
+
+```{r}
+#Your code for Temp goes here
+
+airquality |>
+  
+  summarize(                           # for Temp get:
+          mean(Temp, na.rm = TRUE),    #  mean
+          median (Temp, na.rm = TRUE), #  median
+          sd(Temp, na.rm = TRUE),      #  std dev
+          min(Temp),                   #  min
+          max(Temp)                    #  max
+  )
+```
+
+
+
+```{r}
+#Your code for Wind goes here
+
+airquality |>
+  
+  summarize(                           # for Wind get:
+          mean(Wind, na.rm = TRUE),    #  mean
+          median (Wind, na.rm = TRUE), #  median
+          sd(Wind, na.rm = TRUE),      #  std dev
+          min(Wind),                   #  min
+          max(Wind)                    #  max
+  )
+
+```
+
+
+
+**Question:** Compare the mean and median for each variable. Are they similar or different, and what does this suggest about the distribution (e.g., skewness)? What does the standard deviation indicate about variability?
+
+The Ozone mean/median show a right skewness and the sd shows much variability in the data (as one would expect from ozone concentration that depends on several earth atmospheric parameters and also solar activity.)
+The Temp and Wind mean/median show a well-behaved normal distribution and their sd show some variability. Wind has broader variability than Temp but both behave similarly.
+
+
+#### Task 2: Histogram
+
+Generate the histogram for Ozone.
+
+```{r}
+#Your code goes here
+
+
+hist(airquality$Ozone,                                                          # hist ignores NA values by default
+        main = "Ozone levels in New York from May to September 1973",           # Title
+        xlab = "Ozone, ppb",                    # X-axis label
+        ylab = "Frequency",                     # Y-axis label
+        col = "skyblue",                        # Bar color
+        border = "green",                       # enhance a little
+        breaks = 200                             # call for more bins to narrow line
+    )
+
+
+```
+
+
+
+**Question:** Describe the shape of the ozone distribution (e.g., normal, skewed, unimodal). Are there any outliers or unusual features?
+
+The ozone distribution shows a right skew with a long tail, and an outlier around 170. Browsing the dataset values, I see the single outlier at 168 ppb.
+
+
+#### Task 3: Boxplot
+
+Create a boxplot of ozone levels (Ozone) by month, with months displayed as names (May, June, July, August, September) instead of numbers (5–9).Recode the Month variable into a new column called `month_name` with month names using `case_when` from week 4.Generate a boxplot of Ozone by month_name.
+
+
+```{r}
+# Your code here
+
+# first recode months and create factor.  Just following the class activity (storms)
+
+airquality2 <- airquality |>
+  mutate(
+    month_name = case_when(
+      Month == 5 ~ "May",
+      Month == 6 ~ "June",
+      Month == 7 ~ "July",
+      Month == 8 ~ "August",
+      Month == 9 ~ "September" ),
+    # Convert to factor with explicit order
+      month_name = factor(month_name,
+                            levels = c("May", "June", "July", "August", "September"))
+  )
+
+# second remove rows with ozone NA, then boxplot
+
+airquality3 <- filter(airquality2, !is.na(Ozone))               # filter rows with NAs in Ozone
+
+boxplot(Ozone ~ month_name, data=airquality3, 
+             main = "Ozone by Month, 1973",
+            xlab = "Month",
+            ylab = "Ozone, ppb",
+             col = "lightblue")
+
+```
+
+
+**Question:** How do ozone levels vary across months? Which month has the highest median ozone? Are there outliers in any month, and what might they indicate?
+
+Ozone levels increase since May, go through a maximum level in August and decrease in September.  The highest median ozone is in July (ca. 60 ppb). There are outliers in May (ca. 115 ppb), June (ca. 75 ppb) and September (ca. 70, 80, 90, 100 ppb). In general ozone forms due to higher temperatures and stronger solar radiation, which happen in the warmer months of the year.
+
+
+
+#### Task 4: Scatterplot
+
+Produce the scatterplot of Temp vs. Ozone, colored by Month.
+
+```{r}
+# Your code goes here
+
+plot (Temp ~ Ozone, data = airquality3, 
+      col = airquality3$month_name,
+      main = "Temperature vs Ozone Level in 1973, somewhere in New York",
+      ylab = "Temperature (F)",
+      xlab = "Ozone (ppb)"
+)
+      legend("bottomright", legend=levels(airquality3$month_name), fill=unique(airquality3$month_name))  # legend added for clarity
+      
+
+```
+
+
+**Question:** Is there a visible relationship between temperature and ozone levels? Do certain months cluster together (e.g., higher ozone in warmer months)? Describe any patterns.
+
+Yes, definitely. There's a sharp rise in Ozone level as Temperature rises above ca. 80 F. The data shows that those temperatures can occur in June, July, August and September. In general, the highest ozone levels happen in July and August, and the lowest in May.
+
+
+#### Task 5: Correlation Matrix
+
+Compute and visualize the correlation matrix for Ozone, Temp, and Wind.
+
+```{r}
+# Your code goes here
+
+cor_airquality <- cor (
+  airquality3 |>
+    select(Ozone, Temp, Wind)
+)
+
+cor_airquality
+
+
+corrplot(cor_airquality, method = "color", type = "upper", order = "hclust",
+         tl.col = "black", tl.srt = 40, addCoef.col = "black", col = brewer.pal(n = 8, name = "PiYG"),
+         title = "Correlation among Ozone, Temperature and Wind")
+
+```
+
+
+
+
+
+**Question:** Identify the strongest and weakest correlations. For example, is ozone more strongly correlated with temperature or wind speed? Explain what the correlation values suggest about relationships between variables.
+
+
+The strongest correlation is among Ozone and Temp (.70) and the weakest between Wind and Temp (-0.51). The  negative correlation of Ozone with Wind (-.60) indicates that stronger winds lead to smaller levels of ozone. The explanation may be in the negative correlation between Wind and Temp (-51): higher winds lead to lower temperatures which themselves lead to lower ozone levels.   (The leading independent variable is temperature, not wind speed.)
+
+
+#### Task 6: Summary Table
+
+Generate the summary table grouped by Month.Generate the summary table grouped by Month. It should include count, average mean of ozone, average mean of temperature, and average mean of wind per month.
+
+```{r}
+# your code goes here
+
+airquality3 |>
+  group_by(month_name) |>
+  summarize (count = n(), Ozone_avg = mean(Ozone), Temp_avg = mean(Temp), Wind_avg = mean(Wind))    # airquality3 contains no NA
+  
+
+```
+
+
+
+
+**Question:** Which month has the highest average ozone level? How do temperature and wind speed vary across months? What environmental factors might explain these differences?
+
+The highest average ozone level happens in August.  Average temperature rises since May reaching a maximum in August and drops in September. Average wind speed drops since May and June, reaching a minimum in August and rises in September. So, average ozone levels follow directly the average temperature and inversely the average wind speed. As stated in previous tasks, the  leading cause of ozone production in the atmosphere is temperature (a measure of accumulated thermal energy or "heat"), which increases with solar radiation (proximity to the Sun) and thus maximizes in the Summer months. Stagnated air leads to higher accumulation of heat -- higher temperature. Wind "sweeps" or dilutes stagnated air, lowering the accumulation of heat and air temperature, thus lowering the ozone levels. Another underlying environmental factor is the ongoing global warming, which due to accumulation of CO2 leads to a greenhouse effect; this produces an increase in atmospheric temperature and thus ozone generation. However, such effect would have been present at about the same level during the short May-September timeframe of this database, thus its variation is not evident in the data.
+
+
+**Submission Requirements**
+
+Publish it to Rpubs and submit your link on blackboard
+
+#### Published
+
+Published at https://rpubs.com/rmiranda/1358568
+
