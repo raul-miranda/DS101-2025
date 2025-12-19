@@ -1,0 +1,387 @@
+---
+title: "Homework 10"
+author: "Raul Miranda"
+date: November 11, 2025
+output: html_document
+---
+
+
+#### Introduction:
+
+In this homework, you will apply logistic regression to a real-world dataset: the Pima Indians Diabetes Database. This dataset contains medical records from 768 women of Pima Indian heritage, aged 21 or older, and is used to predict the onset of diabetes (binary outcome: 0 = no diabetes, 1 = diabetes) based on physiological measurements. 
+
+The data is publicly available from the UCI Machine Learning Repository and can be imported directly.
+
+Dataset URL: https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv
+
+**Columns (no header in the CSV, so we need to assign them manually):**
+
+1. Pregnancies: Number of times pregnant
+2. Glucose: Plasma glucose concentration (2-hour test)
+3. BloodPressure: Diastolic blood pressure (mm Hg)
+4. SkinThickness: Triceps skin fold thickness (mm)
+5. Insulin: 2-hour serum insulin (mu U/ml)
+6. BMI: Body mass index (weight in kg/(height in m)^2)
+7. DiabetesPedigreeFunction: Diabetes pedigree function (a function scoring genetic risk)
+8. Age: Age in years
+9. Outcome: Class variable (0 = no diabetes, 1 = diabetes)
+
+**Task Overview:** You will load the data, build a logistic regression model to predict diabetes onset using a subset of predictors (Glucose, BMI, Age), interpret the model, evaluate it with a confusion matrix and metrics, and analyze the ROC curve and AUC.
+
+
+**Cleaning the dataset** Don't change the following code
+
+
+```{r warning=FALSE}
+
+library(tidyverse)
+
+url <- "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
+
+data <- read.csv(url, header = FALSE)
+
+colnames(data) <- c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "DiabetesPedigreeFunction", "Age", "Outcome")
+head(data)
+
+data$Outcome <- as.factor(data$Outcome)
+
+colSums(is.na(data))
+
+# Handle missing values (replace 0s with NA because 0 makes no sense here)
+data$Glucose[data$Glucose == 0] <- NA
+data$BloodPressure[data$BloodPressure == 0] <- NA
+data$BMI[data$BMI == 0] <- NA
+
+str(data)
+
+
+```
+
+**Question 1: Create and Interpret a Logistic Regression Model**
+- Fit a logistic regression model to predict Outcome using Glucose, BMI, and Age.
+
+- Provide the model summary.
+
+- Calculate and interpret R²: 1 - (model$deviance / model$null.deviance). What does it indicate about the model’s explanatory power?
+
+In this problem, the predicted variable is categorical, and the predictor variables are continuous, so we can't do tables to check for category levels>5 like in the class activity. We will directly use the glm() function (Generalized Linear Model). Setting family = binomial tells glm() to perform logistic regression, which is appropriate for binary outcomes like here.
+
+
+```{r}
+## Enter your code here
+
+
+diabetic <- glm(Outcome ~ Glucose + BMI + Age, data=data, family="binomial")
+
+summary(diabetic)
+
+
+```
+
+**What does the intercept represent (log-odds of diabetes when predictors are zero)?**
+
+Note: the intercept and the three coefficients are statistically significant (p<<0.05)
+
+The ln(odds) equation is:
+
+Ln(odds) of diabetes = -9.032377 + .035548(Glucose) + .089752(BMI) + .028699(Age)
+
+Thus, odds = 1/e^9.032377 = 0.00012  (very small odds, 3/2500)
+
+
+
+
+**For each predictor (Glucose, BMI, Age), does a one-unit increase raise or lower the odds of diabetes? Are they significant (p-value < 0.05)?**
+
+Per above, the three predictors are statistically significant.
+
+A unit raise of Glucose:   ln(odds) = -9.032377 + .035548, i.e., odds = 1/e^8.996829 = 0.0001235; increases the odds of diabetes.
+
+A unit raise of BMI: ln(odds) = -9.032377 + .089752, i.e., odds = 1/e^8.942625 = 0.0001307; also increases the odds of diabetes. 
+
+A unit raise of Age: ln(odds) = -9.032377 + .028699, i.e., odds = 1/e^9.003678 = 0.0001230; also increases the odds of diabetes.
+
+The 3 predictors increase the odds of diabetes in the following proportionality: BMI > Glucose > Age.
+
+
+**R-Squared calculation**
+
+Deviance in logistic regression is a measure of model fit.
+
+Null deviance (974.75): deviance with no predictors.
+
+Residual deviance (724.96): deviance with 3 predictors: Glucose, BMI and Age.
+
+The decrease shows the model explains some of the variation in diabetes outcome.
+
+We use them to compute r-squared and overall p-value.
+
+
+```{r}
+r_square <- 1 - (diabetic$deviance/diabetic$null.deviance)
+
+r_square
+
+```
+
+**Overall p-value**
+
+```{r}
+
+1 - pchisq((diabetic$null.deviance - diabetic$deviance), df=3)
+
+```
+
+**Conclusion**
+The model is statistically significant, although it only explains about 26% of the observations.
+
+
+
+
+**Question 2: Confusion Matrix and Important Metric**
+
+- Predict probabilities using the fitted model.
+
+- Create predicted classes with a 0.5 threshold (1 if probability > 0.5, else 0).
+
+- Build a confusion matrix (Predicted vs. Actual Outcome). 
+
+Calculate and report the metrics:
+
+Accuracy: (TP + TN) / Total
+Sensitivity (Recall): TP / (TP + FN)
+Specificity: TN / (TN + FP)
+Precision: TP / (TP + FP)
+
+**Use the following starter code**
+
+```{r}
+
+# Keep only rows with no missing values in Outcome, Glucose, BMI, or Age
+data_subset <- data[complete.cases(data[, c("Outcome", "Glucose", "BMI", "Age")]), ]
+
+#Create a numeric version of the outcome (0 = no diabetes, 1 = diabetes).This is required for calculating confusion matrices.
+data_subset$Outcome_num <- ifelse(data_subset$Outcome == "1", 1, 0)
+
+```
+
+
+```{r}
+
+# Predicted probabilities
+
+predicted_diabetic <- data.frame(
+  prob_diabetic= diabetic$fitted.values,
+  trueoutcome = data_subset$Outcome, glucose = data_subset$Glucose, bmi= data_subset$BMI, age= data_subset$Age)
+
+head(predicted_diabetic, 10)
+
+# Predicted classes
+
+# do: if probability>0.5, predicted outcome=1  
+predicted_diabetic$predictedoutcome <- as.factor(ifelse(predicted_diabetic$prob_diabetic > 0.5, 1, 0))
+
+# rank them from highest to lowest probability
+predicted_diabetic <- predicted_diabetic[
+  order(predicted_diabetic$prob_diabetic, decreasing=FALSE),]
+predicted_diabetic$rank <- 1:nrow(predicted_diabetic)
+head(predicted_diabetic, 10)
+
+```
+
+
+```{r}
+
+# following class activity, show the curve (not quite a sigmoid)
+
+ggplot(data=predicted_diabetic, aes(x=rank, y=prob_diabetic)) +
+   geom_point(aes(color=trueoutcome), alpha=1, shape=4, stroke=2) +
+#  geom_point(aes(color=predictedoutcome), alpha=1, shape=1, stroke=2)+      #attempt to show both predicted and true
+  xlab("Index") +
+  ylab("Predicted probability of diabetes")
+```
+
+
+The plot shows that some nondiabetic patients (orange color crosses) are predicted as diabetic (probability>0.5). Not perfect.
+
+
+**Confusion matrix**
+
+```{r}
+confusion <- table(
+  
+  Predicted = predicted_diabetic$predictedoutcome,
+  Actual = predicted_diabetic$trueoutcome
+  
+)
+
+confusion
+
+```
+
+429 people were actually nondiabetic, and the model correctly predicted them as nondiabetic.
+This is a True Negative.
+
+114 people were actually diabetic, but the model mistakenly predicted them as nondiabetic.
+This is a False Negative.
+
+59 people were actually nondiabetic, but the model mistakenly predicted them as diabetic.
+This is a False Positive.
+
+150 people were actually diabetic, and the model correctly predicted them as diabetic.
+This is a True Positive.
+
+
+
+
+```{r}
+
+# Values:
+
+TN <- 429
+FN <- 114
+FP <- 59
+TP <- 150
+
+# Metrics:   
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+sensitivity <- TP / (TP + FN)   # also called recall or true positive rate
+specificity <- TN / (TN + FP)   # true negative rate
+precision <- TP / (TP + FP)     # positive predictive value
+f1_score <- 2 * (precision * sensitivity) / (precision + sensitivity)
+
+# Print results
+
+cat("Accuracy:", round(accuracy, 3), 
+    "\nSensitivity:", round(sensitivity, 3), 
+    "\nSpecificity:", round(specificity, 3), 
+    "\nPrecision:", round(precision, 3),
+    "\nF1 Score:", round(f1_score, 3))
+```
+
+
+**Interpret: How well does the model perform? Is it better at detecting diabetes (sensitivity) or non-diabetes (specificity)? Why might this matter for medical diagnosis?**
+
+The model has modest accuracy, poor sensitivity and a mediocre F1 score.
+
+It's especially good at identifying nondiabetic individuals (high specificity), and poor at identifying diabetics (57% sensitivity).
+
+Overall, these are mixed results for a binary classification model on diabetics data.
+
+
+
+
+**Question 3: ROC Curve, AUC, and Interpretation**
+
+- Plot the ROC curve, use the "data_subset" from Q2.
+
+- Calculate AUC.
+
+```{r}
+
+# Enter your code here
+
+library(pROC)
+
+# ROC curve & AUC on full data
+roc_obj <- roc(response = predicted_diabetic$trueoutcome,
+               predictor = predicted_diabetic$prob_diabetic,
+               levels = c(0, 1),
+               direction = "<")  # smaller prob = nondiabetic
+
+
+# Print AUC value
+auc_val <- auc(roc_obj); auc_val
+
+
+# Plot ROC with AUC displayed
+plot.roc(roc_obj, print.auc = TRUE, legacy.axes = TRUE,
+         xlab = "False Positive Rate (1 - Specificity)",
+         ylab = "True Positive Rate (Sensitivity)")
+
+
+
+
+```
+
+
+**What does AUC indicate (0.5 = random, 1.0 = perfect)?**
+
+The AUC of 0.828 means that the model is average (i.e., between 0.5 and 1)  at distinguishing between diabetic and nondiabetic patients.
+
+The AUC curve is  above the diagonal, which shows the model is better than chance choice. The model has about 83% chance of ranking the diabetic patients higher.
+
+
+**For diabetes diagnosis, prioritize sensitivity (catching cases) or specificity (avoiding false positives)? Suggest a threshold and explain.**
+
+For diagnosing diabetes, I prefer more sensitivity (accepting lower specificity). I would lower the threshold from 0.5 to 0.4 (e.g.)
+
+let's try it:
+
+```{r}
+
+
+
+# Predicted classes with lower threshold:
+
+# do: if probability>0.4, predicted outcome=1  
+predicted_diabetic$predictedoutcome2 <- as.factor(ifelse(predicted_diabetic$prob_diabetic > 0.4, 1, 0))
+
+confusion <- table(
+  
+  Predicted = predicted_diabetic$predictedoutcome2,
+  Actual = predicted_diabetic$trueoutcome
+  
+)
+
+confusion
+```
+```{r}
+
+# Values
+TN <- 397
+FN <- 94
+FP <- 91
+TP <- 170
+
+# Metrics   
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+sensitivity <- TP / (TP + FN)   # also called recall or true positive rate
+specificity <- TN / (TN + FP)   # true negative rate
+precision <- TP / (TP + FP)     # positive predictive value
+f1_score <- 2 * (precision * sensitivity) / (precision + sensitivity)
+
+# Print results
+
+cat("Accuracy:", round(accuracy, 3), 
+    "\nSensitivity:", round(sensitivity, 3), 
+    "\nSpecificity:", round(specificity, 3), 
+    "\nPrecision:", round(precision, 3),
+    "\nF1 Score:", round(f1_score, 3))
+
+```
+
+Those results are better for Sensitivity than the previous results with threshold =0.5:
+Accuracy: 0.77 
+Sensitivity: 0.568 
+Specificity: 0.879 
+Precision: 0.718 
+F1 Score: 0.634
+
+
+**Conclusion**
+
+To predict diabetes with higher sensitivity, it is better to lower the threshold to less than 0.5. For example, sensitivity increases modestly to 64% with a threshold of 0.4, compared to 57% with a threshold of 0.5. Of course, specificity suffers, dropping to 81% compared to 88%, but 81% is still an acceptable probability of identifying nondiabetic individuals.
+
+
+
+
+**Published**
+
+Published at https://rpubs.com/rmiranda/1367320
+
+
+
+
