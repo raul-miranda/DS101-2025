@@ -1,0 +1,92 @@
+---
+title: "Student Survey"
+author: "Enter your name here"
+output: html_document
+---
+
+## Set the working directory:
+1. Download "StudentSurvey.csv" to your computer.
+2. Set Working directory to the folder you saved your file in.
+3. read the file using read.csv command.
+
+
+```{r}
+#If your assignment does not render, you might need to install.packages("htmltools")
+
+```
+
+
+
+### Instructions:
+
+Read the StudentSurvey into this markdown and answers the following questions
+
+```{r}
+#read the StudentSurvey.csv in here
+
+```
+
+
+## Check the data structure:
+
+```{r}
+#check the head of the data set
+
+
+```
+
+
+
+```{r}
+#check the dimensions
+
+
+```
+
+
+```{r}
+#create a table of students'sex and "HigherSAT"
+
+
+```
+
+
+
+
+```{r}
+# Display summary statistics for VerbalSAT
+
+
+```
+
+
+
+
+```{r}
+#Find the average GPA of students
+
+
+```
+
+
+
+
+```{r}
+#Create a new dataframe, call it "column_df". This new dataframe should contain students' weight and number of hours the exercise 
+
+
+
+```
+
+
+
+
+
+```{r}
+#Access the fourth element in the first column from the StudentSurvey's dataset.
+
+
+
+```
+
+

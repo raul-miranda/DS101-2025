@@ -1,0 +1,108 @@
+---
+title: "Student Survey"
+author: "Raul Miranda"
+output: html_document
+date:   Sep 16, 2025
+---
+
+## Set the working directory:
+
+ 1. Download "StudentSurvey.csv" to your computer       #done
+
+ 2. Set Working directory to the folder you saved your file in.
+
+ 3. read the file using read.csv command.
+
+```{r}
+#If your assignment does not render, you might need to install.packages("htmltools")
+
+```
+
+### Instructions:
+
+Read the StudentSurvey into this markdown and answers the following questions
+
+```{r}
+
+
+#set working directory
+
+setwd('/home/raulginomiranda/DATA101 Fall 2025/Week 3/Homework 2')
+
+#read the StudentSurvey.csv in here
+
+s_survey <- read.csv('StudentSurvey.csv')
+
+
+```
+
+
+## Check the data structure:
+
+```{r}
+str(s_survey)
+
+#check the head of the data set
+
+head(s_survey)
+
+```
+
+
+
+```{r}
+#check the dimensions
+
+dim(s_survey)
+
+```
+
+
+```{r}
+#create a table of students'sex and "HigherSAT"
+
+table(s_survey$Sex, s_survey$HigherSAT)
+```
+
+
+
+
+```{r}
+# Display summary statistics for VerbalSAT
+summary(s_survey$VerbalSAT)
+
+```
+
+
+
+
+```{r}
+#Find the average GPA of students
+
+mean(s_survey$GPA, na.rm= TRUE)
+```
+
+
+
+
+```{r}
+#Create a new dataframe, call it "column_df". This new dataframe should contain students' weight and number of hours the exercise 
+
+column_df <- data.frame(s_survey[, c('Weight','Exercise')])  #i.e., extract only those 2 columns
+column_df   #show it
+```
+
+
+```{r}
+#Access the fourth element in the first column from the StudentSurvey's dataset.
+
+
+s_survey [4,1]
+
+
+```
+
+### Published at
+
+https://rpubs.com/rmiranda/1345364
+
