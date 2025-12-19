@@ -1,0 +1,335 @@
+---
+title: "PROJECT 1  - Energy Indicators"
+author: "Raul Miranda"
+date: "2025-10-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+#### Title: Energy Indicators of Economic Advancement
+
+
+### a. Introduction
+
+As a consequence of the industrial revolution that started in the late XIX century, the world underwent a rapid growth in energy production and energy consumption during the XX century. The energy growth has become exponential since the 1950s, and continues today. The underlying reason (as well as the consequence) of this trend is the multiplying effects of increases in world population, human average age, and standard of living. With a larger demand of energy come demands on our earth resources and damage to the delicate equilibrium between utilization and restoration.  The authors and curators of the Energy database wanted to document the ongoing transition from highly polluting fossil energy towards milder renewable sources and they continue to update the data. Rather than focusing on the energy transition aspects, I decided to use this database to examine the use of energy produced and energy consumed as indicators of economic development across nations.
+
+I propose to associate "standard of living" closely with the rate of energy consumption rather than the rate of production because all countries are consumers, yet not all are producers and have to rely on imported energy. **Thus the question is how does rate of consumption and production relate to GDP per capita?** GDP is a measure of economic development. **Thus the  question can be restated as how does energy consumption and production relate to degree of economic development across different nations over time?**. A good econometric study would require other sources, such as the World Bank and the United Nations databases, which are outside the scope of this project. 
+
+
+### b. Source database for this project 
+
+The dataset named **Energy** is included in Our World in Data: ourworldindata.org/energy. The download is at https://github.com/owid/energy-data: https://nyc3.digitaloceanspaces.com/owid-public/data/energy/owid-energy-data.csv
+
+It was compiled and is curated by Hannah Ritchie, Pablo Rosado and Max Roser, for the purpose of following the changes from fossil to renewable energy across nations since 1900 until 2024. Their primary sources were: Energy Institute  (https://www.energyinst.org/statistical-review), U.S. Energy Information Administration (https://www.eia.gov/opendata/bulkfiles.php), The Shift Dataportal (https://www.theshiftdataportal.org/energy), Ember (https://ember-climate.org/data-catalogue/yearly-electricity-data/), Univ. of Groningen Maddison Project Database (https://www.rug.nl/ggdc/historicaldevelopment/maddison/releases/maddison-project-database-2023). Last update of the compiled energy database: 07/17/2025.
+
+```{r}
+
+# load appropriate libraries
+library(dplyr) 
+library(ggplot2)
+library(patchwork)
+library(readr) 
+library(tidyverse)
+library(corrplot)
+library(RColorBrewer)
+
+# I downloaded the csv to my machine by clicking on the url: "https://nyc3.digitaloceanspaces.com/owid-public/data/energy/owid-energy-data.csv"
+
+setwd("/home/raulginomiranda/DATA101 Fall 2025/Week 5/PROJECT 1")    # set working directory
+energy <- read_csv ('owid-energy-data.csv')                          # read the data and create dataframe
+head (energy)                                                        # check it out
+# str(energy)                                                        # reveal its structure - produces large output-suppressed
+
+# the dataset contains 130 columns (variables) and 23,195 rows (observations by country and year)
+# the variable definitions are at: https://github.com/owid/energy-data/blob/master/owid-energy-codebook.csv, and are not reproduced here.
+
+View(energy)                                                        # open a window to peek at the data 
+
+```
+
+### c. Variables to be used
+
+Variables to be considered:
+
+1- country:  it includes countries but also continents and some economic regions. Since the data can be normalized per capita, this allows comparison among nations, continents or regions.
+
+2- year: covering 1900-to date.
+
+3- iso_code: standardized unique identifier of countries.
+
+4- population, which is a quantity regularly updated by Our World in Data.
+
+5- energy_per_capita:	primary energy consumption per capita, it is measured in kilowatt-hours per person, and it relates to average standard of living. As a reference, 1 KWh is the energy consumed by a 100-W light bulb during 10 h. One gallon of regular gasoline is equivalent to 33.7 KWh; i.e., a car that makes 33.7 miles to a gallon consumes 1 KWh per mile.
+
+6- energy_per_gdp:	primary energy consumption per GDP. It is measured in kilowatt-hours per international-$ (see GDP below). Also called 'energy intensity' or amount of energy used per unit of GDP; related to the efficiency of energy use. We may use this information to explain some of the results.
+
+7- primary_energy_consumption:	primary energy consumption, it is measured in terawatt-hours  (1 TWh = 10^9 KWh - a billion KWh). I postulate that it is related to each country's state of development. (However, an economic study is outside the scope of this project.)
+
+8- coal_production:	coal production measured in terawatt-hours.
+
+9- oil_production: oil production measured in terawatt-hours.
+
+10- gas_production:	gas production measured in terawatt-hours.
+
+11- electricity_generation: total electricity generated in each country or region, measured in terawatt-hours.
+
+12- fossil_electricity:	electricity generated from fossil fuels --coal, oil, and gas-- measured in terawatt-hours.
+
+13- renewables_electricity:	electricity generation from renewables, measured in terawatt-hours. Renewables include biomass, solar, wind and hydroelectric. Note: the authors did not compile data on geothermal and marine energy.
+
+14- nuclear_electricity:	electricity generated from nuclear power, measured in terawatt-hours.
+
+15- gdp: gross domestic product: comes from the World Bank's World Development Indicators database, adjusted for inflation and differences in living costs between countries. This adjustment allows a more meaningful comparisons of economic data between countries.
+
+
+
+### c. Data Analysis
+
+
+```{r}
+# Subset the energy dataset to selected columns 
+
+energy_sub <- energy |> 
+  select("country","year","iso_code","population","energy_per_capita","energy_per_gdp","primary_energy_consumption","coal_production","oil_production","gas_production","electricity_generation","fossil_electricity","renewables_electricity","nuclear_electricity","gdp")
+
+
+# Cleaning the data
+
+
+# Simplify matters for this first project: filter only nations, exclude continents or economic regions (i.e. countries without iso_code) and exclude any rows without reported population (e.g. Antarctica), since they do not allow for calculation of GDP per capita; and exclude any rows that do not report any energy consumption or does not report GDP, which usually happened for many countries in the early years (1900-1965 or even until 1980 for the less developed nations).
+# note: for filter() I was getting an error until I had to add dplyr:: in front to indicate I use filter from dplyr and not from stats package.
+
+energy_sub <-
+   dplyr::filter (energy_sub, 
+                      !is.na(iso_code) & 
+                       !is.na(gdp) & gdp != 0 &
+                       !is.na(primary_energy_consumption) & primary_energy_consumption != 0 &
+                       !is.na(population) & population != 0)
+
+# Handle the NAs or missing energy production values before calculating total energy production: I interpret that NAs are energy data not available or that energy produced was zero for a country or year. Thus I turn NAs to zero prior to applying mutate(), which otherwise yields NA for calculated columns.
+
+ energy_sub [c("coal_production","oil_production","gas_production","electricity_generation","fossil_electricity","renewables_electricity","nuclear_electricity")][is.na(energy_sub [c("coal_production","oil_production","gas_production","electricity_generation","fossil_electricity","renewables_electricity","nuclear_electricity")])] <- 0    #there must be a prettier way of doing this in diplyr!!
+ 
+# Add a column for total_energy_production, which the authors didn't include.  Total energy is considered to be the sum of coal, oil, gas, and electricity (from fossil, renewables and nuclear). I checked that the coal, oil, gas columns do not include the fraction of them converted to electricity, so we are not double counting. 
+ 
+# Also as a check, add a column electricity_non_foss_ren_nucl, which is the difference between total electricity_generation minus electricity from fossil, renewables and nuclear. A non-zero value indicates round-off error, inconsistency or error in the electricity generation data, or perhaps electricity imports that were incorrectly counted as electricity generated by the country.
+ 
+# Also add a column for GDP per capita to compare across countries.
+
+energy_sub <- mutate(energy_sub,
+        "total_energy_production"=coal_production+oil_production+gas_production+electricity_generation,
+        "electricity_non_foss_ren_nucl"=electricity_generation-fossil_electricity-renewables_electricity-nuclear_electricity,
+        "gdp_per_capita"=gdp/population)  # I already removed all gdp and population equal to 0 or NA, so there can't be an infinity or NA result.
+
+view(energy_sub)      # after all filtering and cleaning, the dataset contains now 7800 rows, that start from 1960.
+
+summary (energy_sub)   # see basic stats of the numerical variables
+
+```
+
+```{r}
+## Get a graphical idea of how GDP and energy consumption per capita are distributed among countries. Note: each country has several rows, each row corresponding to 1 year. The aggregate statistics (such as mean) actually calculate the GDP per year. In this histogram, we use GDP per capita, and the count is actually the frequency of GDP per capita values across all countries and years. 
+
+
+gdp_histg <- ggplot(energy_sub, aes(x = gdp_per_capita)) +
+  geom_histogram(binwidth = 2000, fill = "lightgreen", color = "blue") +
+  labs(title = "GDP/capita across countries", x = "GDP, International $/capita", y = "Frequency") +
+  theme_minimal()
+
+enrg_histg <- ggplot(energy_sub, aes(x = energy_per_capita)) +
+  geom_histogram(binwidth = 4000, fill = "yellow", color = "red") +
+  labs(title = "Energy consumption/capita across countries", x = "Energy Consumption/capita, KWh/capita", y = "Frequency") +
+  theme_minimal()
+
+gdp_histg + enrg_histg                  #put them side by side -- they seem to correlate
+
+
+```
+
+```{r}
+
+# However, is there an actual correlation? I use the cor() function from the last lecture to get an idea of the correlation among some of the variables of interest: overall gdp, total energy consumption, total energy production, consumption per capita and gdp per capita.
+
+rel_matrix <- cor(
+  energy_sub |>
+    select(gdp, primary_energy_consumption, total_energy_production, energy_per_capita, gdp_per_capita))
+
+rel_matrix
+
+corrplot(rel_matrix, method = "color", type = "upper", order = "hclust",
+         tl.col = "black", tl.srt = 40, addCoef.col = "black", col = brewer.pal(n = 8, name = "PiYG"),
+         title = "Relation among GDP and energies")
+```
+```{r}
+# Let's look at how energies and gdp have progressed since the 60s. I'll bin de data by decade. To lump years by decade, I use an old programming trick: round down to the nearest integer with the trunc() function, so e.g., 1998 is rounded to 1990.
+
+decadal_progress <- energy_sub |>
+    mutate (decade = trunc (year/10) * 10) |>                                  # var that identifies the decade for each row
+    group_by(country, decade) |>                                               # grouped by country and decade
+    summarize(
+      tot_population = sum(population),                                        # get total and avg population 
+      avg_population = mean (population),
+      tot_energy_consumption = sum(primary_energy_consumption),                # get total and avg energies 
+      avg_energy_consumption = mean(primary_energy_consumption),
+      tot_energy_production = sum(total_energy_production),
+      avg_energy_production = mean(total_energy_production),
+      tot_gdp = sum(gdp),                                                      # get total and avg gdp 
+      avg_gdp = mean(gdp),
+      avg_gdp_per_capita = mean(gdp_per_capita)                                # as well as avg gdp per capita
+    )
+ decadal_progress
+
+```
+
+```{r}
+# Now, let's also create bins lumping gdp_per_capita by ranges, which we can call "below avg", "average", "above avg", etc.  I had done binning before, but had to check how to do it in R with the cut() function. 
+# My bin cutoffs are arbitrary, but are related to the basic stats found above for gdp_per_capita (ca. min:360, 1Qu:2800, median:7800, mean:13000, 3Qu:18000, max:163000).
+
+cutoffs <- c(360,2000,5000,10000,16000,25000,50000,Inf)
+labels <- c('Emerging','Well Below','Below','Average','Above','Well Above','Ridiculous')
+energy_sub$gdp_per_capita_bin <- cut(energy_sub$gdp_per_capita, breaks=cutoffs,labels=labels, include.lowest = TRUE, right = TRUE)       # create the variable: gdp_per_capita_bin
+
+# and plot it out to find the frequency of gdp_per_capita across countries since the 60s. The net effect is to classify countries into the categories shown.
+
+ggplot(energy_sub, aes(x = gdp_per_capita_bin)) +
+  geom_bar(fill= "steelblue") +
+  labs( title= 'Distribution of GDP per capita across countries since the 60s', x='GDP Range', y="Frequency")
+```
+```{r}
+# Let's try using bins in the decadal_progress data (data grouped by country and 10-year period.) The idea is to see if the histogram comes out by decade. 
+
+decadal_progress_bined <- energy_sub |>
+    mutate (decade = trunc (year/10) * 10) |>
+    group_by(country, decade)
+
+decadal_progress_bined$gdp_per_capita_bin <- cut(decadal_progress_bined$gdp_per_capita, breaks=cutoffs,labels=labels, include.lowest = TRUE, right = TRUE)        # use the same breaks and labels as before
+
+# convert variable "decade" to categorical, since we'll need it to be categorical for the histogram to work; add new column
+
+decadal_progress_bined$decade_cat <- factor(decadal_progress_bined$decade)
+
+ggplot(decadal_progress_bined, aes(x = gdp_per_capita_bin, fill= decade_cat)) +
+  geom_bar(position= "stack") +
+  labs( title= 'Distribution of GDP per capita across countries each decade', x='GDP Range', y="Frequency")
+
+
+```
+```{r}
+# Investigate qualitatively the evolution over time of primary energy consumption and production and GDP per capita. all countries are lumped.
+
+# First convert from "wide" to "long" format  per book instructions for the geom_point to work.
+
+energy_long <- pivot_longer(energy_sub, cols = c(primary_energy_consumption, total_energy_production), names_to = "variable", values_to = "value")
+ggplot (energy_long, aes(x = year, y = value, color = variable)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "",
+       x = "Year", y = "Energy, TWh") +
+  theme_minimal()
+```
+
+```{r}
+# Now let's show how the gdp evolved (all counties lumped) on the right y-axis. I found by trial and error that 10^8/6 is a good scaling factor to put energy (left axis) and gdp (right axis) on the same plot
+
+energy_long <- pivot_longer(energy_sub, cols = c(primary_energy_consumption, total_energy_production), names_to = "variable", values_to = "value")
+
+ggplot (energy_long, aes(x = year, y= value, color=variable))+
+  geom_point() +
+  geom_line() +
+  geom_point(aes(y=gdp/10^8/6, color="GDP")) +
+  geom_line(aes(y=gdp/10^8/6, color="GDP")) +
+  scale_y_continuous(
+    name = "Energy, TWh",
+    sec.axis= sec_axis(~.*10^8/6, name="GDP, int $")) +
+    labs( title="GDP relation to Energy Consumption and Production", x="Year") +
+    scale_color_manual(name = "Variables", values = c("primary_energy_consumption" = "blue", "total_energy_production" = "darkgreen", "GDP" = "red"),
+    labels = c("primary_energy_consumption" = "Consumption", "total_energy_production" = "Production", "GDP" = "GDP")) +
+  
+  theme_minimal()
+
+```
+
+```{r}
+
+# Since the plot is not definitive, let's try to answer the question of correlations between energies and gdp per capita in the form of tables.
+
+# Tabulate the mean and median of gdp per capita, energy consumption, energy production, as well as the difference energy production minus energy consumption.  That difference distinguishes countries/years when energy was exported (difference>0) or imported (difference<0). Some countries are net importers and others net exporters.
+
+summary_stats <- decadal_progress |>
+  group_by(country) |>
+    summarize(
+      mean_population = round(mean(avg_population),2),
+      mean_gdp = round(mean(avg_gdp_per_capita),2),
+      median_gdp = round(median(avg_gdp_per_capita), 2),
+      mean_en_cons = round(mean(avg_energy_consumption),2),
+      median_en_cons = round(median(avg_energy_consumption), 2),
+      mean_en_prod = round(mean(avg_energy_production),2),
+      median_en_prod = round(median(avg_energy_production), 2),
+      diff_prod_cons = round(mean_en_prod - mean_en_cons, 2)
+    ) |>
+  arrange (desc(mean_gdp), desc(mean_en_cons), desc(mean_en_prod), desc(diff_prod_cons))             # arrange the table in descending order of mean gdp, mean energy consumption, mean energy production, and difference production-consumption
+
+summary_stats
+
+
+# Get a correlation matrix of summary_stats; use the cor() and corrplot() 
+
+rel_matrix <- cor(
+  
+summary_stats |>
+    select(mean_population,mean_gdp, mean_en_cons, mean_en_prod, diff_prod_cons))          # line up the ducks
+
+rel_matrix
+
+corrplot(rel_matrix, method = "color", type = "upper", order = "hclust",   # and shoot them
+         tl.col = "black", tl.srt = 45, addCoef.col = "black",
+         title = "Correlation Matrix of Gdp and Energies")
+```
+
+
+### d. Conclusions
+
+**The original question was of how the consumption of energy by countries relates to the production of energy and to their GDP, which we associated with the state of economic development of a country. We also asked how those three variables (the two energies and the national GDP) relate to the standard of living of individuals in those countries.** For the latter, we took GDP per capita to be a measure of standard of living. As stated above, this is limited; a full economic study would require other indicators and other databases. Another caveat: this is not a thorough or rigorous statistical analysis; but a subjective interpretation of tabular or graphical depictions of the data.
+
+Before diving into the final conclusions, a note about the process. I selected a number of variables with a larger goal in mind, that of investigating groups of individual countries along their history. This quickly became unrealistic and I reduced the scope to just answering the question posed above, without identifying individual countries. The Rmarkdown above shows the tentative progression of this study; if I tried it again, I would probably include fewer steps to reach the same conclusions. I also didn't bother to look for sophisticated dyplr functions to shorten the code.
+
+Another note: although the database is quite complete, the authors of the dataset missed the inclusion of geothermal and marine energies, which have in the last two decades become important sources of renewable energy. Nevertheless, the dataset is quite thorough, well maintained and regularly updated. Fortunately, there was little to clean, obviously built from scratch for data science use. The NAs were for the most part indicative of information that was not collected. For example, in the 1900-1960 period very few countries maintained statistics on energy. Also, some of the NA were due to irrelevancy. For example, economic regions (like the ASEA) or continents don't have iso_codes; and "population" or GDP for them is usually not reported, ruling out the calculation of a GDP per capita. Nevertheless, continents and economic regions are composed of countries, which are part of the database. So excluding continents and regions from this study does not alter the conclusions. The net result of the cleaning was reducing the dataset to 7800 rows.
+
+**The first conclusion**. From the first graphical comparison that I did between GDP/capita and Energy consumption/capita, with all countries and all years included, the first impression was that there's a strong correlation between them. However, a cor() analysis showed correlation coefficients that reveal more detail:  GDP of countries correlate better with energy consumption (0.95) than with energy production (.86) which can be explained because all economic activities REQUIRE the use of energy, and not all necessitate a net positive production of energy.  Many countries (e.g. Japan) strongly depend on energy imports to compensate for their deficiency of energy production and maintain their strong GDP. 
+
+**The second conclusion**. Another detail that emerged was surprising at first: energy consumption per capita and GDP per capita (measure of standard of living) are poorly correlated with the GDP of countries (.15, .22) or with energy production (.22). The  basic statistics for GDP per capita are quite unsettling, showing a strong imbalance of GDP per capita. The result suggests that countries with the highest GDP per capita (above 30,000) may have the smallest populations. The exception is the United States. But this is true for Qatar and Luxembourg for example as the dframe Summary_Stats shows. The opposite is also true, that countries with larger populations tend to have average to smaller GDP per capita. This is true for India and China, for example. These results led to the classification of countries according to GDP/capita bins labeled: Emerging, Well Below , Below, Average, Above, Well Above, and Ridiculous. One can easily see that more than 50% of countries GDP/capita are classified as  Emerging, Well Below and Below average. Roughly 5/8 are Average or less, roughly 2/8 are Above and Well Above, and 1/8 are Ridiculous. This explains the poor correlation between  energy consumption/capita or GDP per capita (standard of living)  and national GDP on a global scale.
+
+**The third conclusion**. An examination of how the national GDP evolved over the decades (barplot per decade) reveals that the 60s were modest for all countries. The 70s were particularly good for the Above average countries. The 80s, 90s, and 2000s have been particularly good for the Emerging, Well Below and Below average countries The 2010s and 2020s were very good for the Well Above average countries. The 2010s showed incredible growth for the Ridiculous countries.
+
+**The fourth conclusion**. The evolution over time plots reveal that national GDP and energy consumption have followed each other. The graphs are not clear since the GDP Range wasn't labeled in the plots (to avoid a mess). But one can appreciate that GDP and consumption for the Ridiculous and Well Above (highest curves) are quite parallel, with the GDP showing a dramatic exponential rise after the 80s. One interesting observation is that production and consumption are not always in parallel, most obvious in the 1960-2000 period. Large increases in production as in the 2000s, did not cause immediate increases in consumption; consumption lagged some years behind production. The possible reasons are uncertain and need further study. Another observation is that the energy curves appear to reveal some dependence on energy imports (i.e., more consumption than production).  The last correlation matrix shows the slightly negative correlation of Production-Consumption with GDP per capita and with consumption per capita, showing that the biggest consumers/highest standard of living countries tend to import energy because their production is not enough to supply the demand.
+
+
+### e. Obstacles
+
+
+There were many obstacles, primarily with clarifying in my mind what kind of question I could **really** answer with the limited time for the project, and then sitting down to write the code and getting it to run without errors. I had to try-and-err many times, but settled for simple functions that worked.  The graphics portion was OK. I had done  graphics programming several years ago, so the problem was that I don't remember any of that. I had to refresh and relearn from the texts (mainly Wickham).
+
+
+### f. Future steps
+
+I think much more can be done with this dataset. I have not had the time to check what the authors have analyzed and published. I bet it's a ton. They have focused on the politically and technologically important energy transition issues. So while I would like to do something in that space, I bet I will just end reinventing the wheel. So I may drift away from this dataset for future projects.
+
+The baby steps that one could still pursue with this dataset are to focus on the time domain.  There are details to emerge from analyzing the evolution of energies and how they influence GDP.  A new database from World Bank, UN, or others could be merged with this one to better study and understand economic variations. In terms of mechanics, I would like to decouple specific countries or groups of countries from the aggregate of nations to more clearly understand the flux of energy and associated GDP between them. The current global tensions related to that interchange show the importance of understanding this dynamics.
+
+
+### g. References
+
+- Class notes
+- H. Wickham, et al., R for Data Science, 2nd Ed., https://r4ds.hadley.nz/ (2023)
+- A. Douglas, et al., An Introduction to R, https://intro2r.com/ (2024)
+- Energy conversion factors and facts about renewables: OSTI website (https://www.osti.gov/)
+
+### h. Published
+
+Published at https://rpubs.com/rmiranda/1356025
+
+
+
