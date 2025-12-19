@@ -1,0 +1,117 @@
+---
+title: "Homework 7"
+author: "Raul Miranda"
+date: "2025-10-22"
+output:
+  pdf_document: 
+   latex_engine: xelatex
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+For each question:
+
+-Write the hypothesis tests.
+
+-State the significance level ($\alpha$)
+
+-p-value
+
+-State your decision.
+
+Write your answers on R markdown and submit your answers as a PDF. Make sure you include your name and the date.
+
+**Problem 1**
+
+Many high school students take the AP tests in different subject areas. In 2017, of the 144,790 students who took the biology exam 84,200 of them were female. In that same year, of the 211,693 students who took the calculus AB exam 102,598 of them were female. Is there enough evidence to show that the proportion of female students taking the biology exam is higher than the proportion of female students taking the calculus AB exam? Test at the 5% level.
+
+**Answer**
+
+This is a 2 proportions Z-test type, comparing the proportion of female students who took the bio exam to the proportion of them that took the calc exam. 
+
+The null hypothesis is that both proportions are the same, while the alternative hypothesis is that the proportion of females taking the bio exam is higher than the proportion of them taking the calc exam.
+
+**Hypotheses** 
+
+$H_0$: $p_1$ = $p_2$
+
+$H_a$: $p_1$ > $p_2$
+
+Where
+
+$p_1$ = proportion of female students taking the bio exam
+
+$p_2$ = proportion of female students taking the calc exam
+
+1. We'll conduct a two-sample proportion test (one-sided, greater) with a 95% confidence level and find whether there's evidence that $p_1$ > $p_2$ at $\alpha$ = 0.05.
+
+2. Then we'll check the confidence interval for the difference in proportions.
+
+
+```{r}
+
+
+prop.test(c(84200, 102598), c(144790, 211693), alternative = "greater")
+
+
+```
+**Problem 1 Conclusion**
+
+1. p-value = 2.2e-16. It is very close to zero, much smaller than the statistically significant $\alpha$ = 0.05. Thus there is strong evidence that the proportion of females that took bio is higher than that who took calc.
+
+2. 95% CI for difference = (0.094, 1.000)  The null value (0) is totally outside the confidence interval, showing again that more females proportionally took the bio than the calc exam.
+
+
+
+**Problem 2**
+
+A vitamin K shot is given to infants soon after birth. The study is to see if how they handle the infants could reduce the pain the infants feel. One of the measurements taken was how long, in seconds, the infant cried after being given the shot. A random sample was taken from the group that was given the shot using conventional methods, and a random sample was taken from the group that was given the shot where the mother held the infant prior to and during the shot. Is there enough evidence to show that infants cried less on average when they are held by their mothers than if held using conventional methods? Test at the 5% level. Data are below in vectors crytime_momheld and crytime_convtnl.
+
+**Answer**
+
+This is a 2-sample t-Test (for baby crying time).
+
+Researchers compared crying time (seconds) after a shot given while the babies were held by their mom versus while they were given a conventional shot. These are two independent sample populations.
+
+```{r}
+
+crytime_momheld <- c(0,32,20,23,14,19,60,59,64,64,72,50,44,14,10,58,19,41,17,5,36,73,
+                     19,46,9,43,73,27,25,18)
+crytime_convtnl <- c(62,0,2,46,33,33,29,23,11,12,48,15,33,14,51,37,24,70,63,0,73,39,
+                     54,52,39,34,30,55,58,18)
+
+```
+
+**Hypotheses** 
+
+$H_0$: $\mu_1$ = $\mu_2$     
+
+$H_a$: $\mu_1$ < $\mu_2$
+
+Where 
+
+$\mu_1$ = mean crying time of baby being held by mom during shot.
+
+$\mu_2$ = mean crying time of baby given a shot conventionally.
+
+1. We conduct a two-sample (one-sided, less) t-test to determine if babies being held by moms cry less time than babies being given a shot conventionally, with a 95% confidence level. We interpret the p-value and state whether the result is statistically significant at $\alpha$ = 0.05.
+
+2. We examine the 95% confidence interval for the difference in means and state the meaning.
+
+
+```{r}
+
+
+t.test(crytime_momheld, crytime_convtnl, conf.level = 0.95, alternative = "less")
+
+
+```
+**Problem 2 Conclusion**
+
+1. The p-value = 0.4905 is much higher than the statistically significant $\alpha$ = 0.05. Thus we cannot reject the null hypothesis. We cannot conclude that the mean crying time for momheld babies (35.133 sec) is significantly less than the conventional mean crying time (35.267 sec). The close to 0 t-value also implies lack of significant difference between the two means.
+
+2. The 95% CI is (-∞, 9.159). Since 0 is inside the interval, the difference in means is statistically insignificant, again showing that the mean crying time of momheld babies is not significantly less than that of conventional babies. Sorry.
+
