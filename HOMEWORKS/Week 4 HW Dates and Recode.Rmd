@@ -1,0 +1,199 @@
+---
+title: "Week 4-HW"
+author: "Raul Miranda"
+date: Oct. 19, 2025
+output: html_document
+---
+
+### Homework Assignment: Analyzing NYC Flight Data
+
+This homework assignment uses the `flights` dataset from the `nycflights13` package, which contains real-world data on over 336,000 flights departing from New York City airports (JFK, LGA, EWR) in 2013. The dataset includes variables such as departure and arrival times (with date components), airline carrier (categorical), origin and destination airports (categorical), delays (with missing values for cancelled flights), distance, and more. It is sourced from the US Bureau of Transportation Statistics.
+
+#### Objectives
+This assignment reinforces the Week 4 topics:
+
+- Parsing and manipulating dates/times using `lubridate`.
+- Creating and analyzing time series with `zoo`.
+- Working with factors, inspecting levels, and recoding them.
+- Identifying and handling missing data (e.g., removal, imputation).
+
+All questions (except the final reflection) require you to write and run R code to solve them. Submit your URL for your RPubs.  Make sure to comment your code, along with key outputs (e.g., summaries, plots, or tables). Use the provided setup code to load the data.
+
+#### Setup
+Install and load the necessary packages if not already done:
+
+```{r}
+#install.packages(c("tidyverse", nycflights13", "dplyr", "lubridate", "zoo", "forcats"))
+library(tidyverse)
+library(nycflights13)
+library(dplyr)
+library(lubridate)
+library(zoo)
+library(forcats)  # For factor recoding; base R alternatives are acceptable
+data(flights)  # Load the dataset
+```
+
+
+Explore the data briefly with `str(flights)` and `head(flights)` to understand the structure. Note: Dates are in separate `year`, `month`, `day` columns; times are istr(flights)n `dep_time` and `arr_time` (as integers like 517 for 5:17 AM).
+
+
+```{r}
+#Explore your data here
+str(flights)
+head(flights)
+
+```
+
+
+#### Question 1: Creating Dates with `lubridate` 
+
+Create a column dep_datetime by combining year, month, day, and dep_time into a POSIXct datetime using lubridate. (Hint: Use `make_datetime` function to combine: year, month, day, for hour and min use division, e.g., hour = dep_time %/% 100, min = dep_time %% 100.) 
+
+Show the first 5 rows of flights with dep_datetime.
+
+**Output:** First 5 rows showing year, month, day, dep_time, and dep_datetime.
+
+```{r}
+flights2 <- flights |>
+mutate (dep_datetime = make_datetime(year, month, day, hour=dep_time %/% 100, min=dep_time %% 100))
+
+select(flights2,year,month,day,dep_time,dep_datetime) |>
+head(5)
+
+
+
+```
+
+
+
+#### Question 2: Simple Date Manipulations with `lubridate` 
+
+Using dep_datetime from Question 1, create a column weekday with the day of the week (e.g., "Mon") using wday(dep_datetime, label = TRUE). Use table() to show how many flights occur on each weekday.
+
+
+**Output:** The table of flight counts by weekday.
+
+```{r}
+flights_table <- flights2 |>
+mutate ( weekday = wday(dep_datetime, label = TRUE))
+table(flights_table$weekday)
+
+
+```
+
+
+
+
+#### Question 3: Time Series with zoo 
+
+Filter for flights from JFK (origin == "JFK") and create a zoo time series of departure delays (dep_delay) by dep_datetime. Plot the time series (use plot()). (Hint: Use a subset to avoid memory issues, e.g., first 1000 JFK flights using `slice_head().)
+
+
+**Output:** The time series plot.
+
+```{r}
+
+flights3 <- flights2 |>
+filter (origin == "JFK") |>
+slice_head(n = 1000)                # flights3 contains just the first 1000 rows of the flights from JFK
+zoo (flights3$dep_delay, flights3$dep_datetime) |>             # create the zoo time series and plot it
+plot(main = "Departure Delays", xlab = "Date", ylab = "Delay (min)", type = "p", col="blue", pch=20, cex=0.8) |>
+points(col = "red", pch = 20, cex = 0.4)
+
+```
+
+
+#### Question 4: Working with Factors 
+Convert the origin column (airports: "JFK", "LGA", "EWR") to a factor called origin_factor. Show the factor levels with levels() and create a frequency table with table(). Make a bar plot of flights by airport using barplot().
+
+
+**Output:** The levels, frequency table, and bar plot.
+
+```{r}
+
+flights2$origin_factor = factor(flights2$origin)      # convert to factor for table to work
+levels(flights2$origin_factor)                        # show levels
+flights_by_airport <-table(flights2$origin_factor)    # create table
+flights_by_airport                                    # show it
+barplot(flights_by_airport,                           # create barplot
+  xlab = "Airport",
+  ylab = "No. Flights",
+  main = "Flights by Airport",
+  col = c("red", "blue", "green")
+) 
+
+
+```
+
+
+#### Question 5: Recoding Factors 
+Recode origin_factor from Question 4 into a new column origin_recoded with full names: "JFK" to "Kennedy", "LGA" to "LaGuardia", "EWR" to "Newark" using fct_recode() or base R. Create a bar plot of the recoded factor.
+
+**Output:** The new levels and bar plot.
+
+```{r}
+
+# recode using base-R
+
+flights2$origin_recoded [flights2$origin_factor=="JFK"] <- "Kennedy"
+flights2$origin_recoded [flights2$origin_factor=="LGA"] <- "LaGuardia"
+flights2$origin_recoded [flights2$origin_factor=="EWR"] <- "Newark"
+flights2$origin_recoded = factor(flights2$origin_recoded)      # convert to factor again for table to work
+table(flights2$origin_recoded) |>
+barplot(
+  xlab = "Airport",
+  ylab = "No. Flights",
+  main = "Flights by Airport",
+  col = c("red", "blue", "green")
+)
+
+
+# try forcats fctrecode: have to use mutate to generate new column origin_recoded2. Yes it works since origin_recoded2=origin_recoded
+
+  mutate ( flights2, origin_recoded2 = fct_recode (origin_factor, "Kennedy" = "JFK", "LaGuardia"="LGA", "Newark"="EWR"))
+
+```
+
+
+#### Question 6: Handling Missing Data 
+
+Count missing values in dep_delay and arr_delay using colSums(is.na(flights)). Impute missing dep_delay values with 0 (assuming no delay for cancelled flights) in a new column dep_delay_imputed. Create a frequency table of dep_delay_imputed for delays between -20 and 20 minutes (use filter() to subset).
+
+**Output:** NA counts, and the frequency table for imputed delays.
+
+```{r}
+colSums(is.na(flights2)) [c("dep_delay","arr_delay")]              # count the NAs in the 2 columns
+
+flights2$dep_delay_imputed <- ifelse(is.na(flights2$dep_delay), 0, flights2$dep_delay)    # base-R create dep_delay_imputed with value 0 for NA dep_delay
+
+colSums(is.na(flights2))[c("dep_delay_imputed","arr_delay")]       # check that all missing dep_delays were imputed; NA count should be zero
+
+flights_imputed <- filter (flights2, dep_delay_imputed >= -20 & dep_delay_imputed <= 20)   # filter the -20 to 20 range
+
+freq_table <- table(flights_imputed$dep_delay_imputed)             # produce the table of dep_delay_imputed
+
+freq_table                                                         # show it
+
+as.data.frame(freq_table)    # for clarity, make it a vertical table, and also show the barplot
+
+barplot (freq_table, col='lightblue', main='Flight delays', xlab='Delay in min', ylab='No. flights')
+
+```
+
+
+
+
+#### Question 7: Reflection (No Coding)
+Reflect on the assignment: What was easy or hard about working with flight dates or missing data? How might assuming zero delay for missing values (Question 6) affect conclusions about flight punctuality? What did you learn about NYC flights in 2013? (150-200 words)
+
+
+The assignment was harder than previus homeworks definitely. Working with dates with lubridate and zoo was not difficult, for the simple conversions we had to do. However, it took trial and error to get table to work correctly for me. Conversion of the table variable to factor is essential. Also, recoding in base R gave me trouble --produced warnings when creating new columns; rerunning the line gave error. Forcats fct_recode was more robust. Handling missing values was fine, I had to use ifelse() to create the new column. As to your question: assuming zero delay for missing values may affect the true statistics of flight delays, as long as the missing values represent flights that never took off.  As the barplot in Q6  shows, zeros are outside the Gaussian distribution. In a normal distribution, there should be around 13000 flights with zero delay, not over 25000. Punctuality is overstated. How to correct this? One can appropriately filter out the flights that never took off before calculating the statistics, and that might correct the observed distribution. Looking at the flights dataset, one can identify those flights because they had NAs for departure time, departure delay, arrival time and arrival delay.  There may be cases where the flights actually took off and for some reason the departure time (and departure delay) were not recorded, but the arrival time and delay were. I did not search for those cases. But it they exist, then it is appropriate to assign logical values to the departure delay of those flights that show arrival time. I would look at the arrival delay; commonly not all flights make up the lost time in short domestic flights and thus typically the departure delay is to a first approximation equal to the arrival delay. I think that such first approximation is better than assigning zero to the missing departure delay. 
+Second question of what I learned about the 2013 NYC flights: the 3 airports are very congested, particularly EWR, almost every day; Saturdays seem a little better than the other days. In terms of delays, just a visual examination of the scatterplot shows that delays are smaller in the AM than in the evening, so the message is to fly early to minimize wait time at the airport. There are gaps between around midnight and 4 am. No flights taking off at those times. A visual examination of the delay distribution shows a mean around -2 to -5 min, which tells us that these major airports had an excellent record of timely departure despite the long tails to -14 and +20 minutes.
+
+### Published
+
+Rpubs:  https://rpubs.com/rmiranda/1357441
+
+
+
+
