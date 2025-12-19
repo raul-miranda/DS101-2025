@@ -1,0 +1,271 @@
+---
+title: "Homework 9"
+author: "Raul Miranda"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# load necessary libraries
+
+library (tidyverse, dyplr)
+library (car) # for the crPlots function
+library (ggplot2)
+```
+
+**1. Upload the data set AllCountries.csv and check its contents and structure as well as check NAs**
+```{r}
+data <- read_csv("AllCountries.csv")
+head (data)
+str (data)
+colSums(is.na(data))
+```
+**Since there are NAs in LifeExpectancy, Health and Internet, and DeathRate#, CO2#, Energy#, Electricity#, impute LE, Health and Internet with their mean values; impute GDP, CO2, Energy and Electricity with their median, since they are strongly right skewed.  Note(#) these variables are used later in the homework.**
+
+```{r}
+data_2 <- data |> mutate(
+    GDP = ifelse(is.na(GDP), median(GDP, na.rm = TRUE), GDP),
+    LifeExpectancy = ifelse(is.na(LifeExpectancy), mean(LifeExpectancy, na.rm = TRUE), LifeExpectancy),
+    Health = ifelse(is.na(Health), mean(Health, na.rm = TRUE), Health),
+    Internet = ifelse(is.na(Internet), mean(Internet, na.rm = TRUE), Internet),
+    DeathRate = ifelse(is.na(DeathRate), mean(DeathRate, na.rm = TRUE), DeathRate),
+    CO2 = ifelse(is.na(CO2), median(CO2 , na.rm = TRUE), CO2),
+    Energy = ifelse(is.na(Energy), median(Energy, na.rm = TRUE), Energy),
+    Electricity = ifelse(is.na(Electricity), median(Electricity, na.rm = TRUE), Electricity)
+  )
+colSums(is.na(data_2))  # check it out
+summary(data_2)
+```
+
+
+
+**2. Simple Linear Regression (Fitting and Interpretation)** 
+
+Using the AllCountries dataset, fit a simple linear regression model to predict LifeExpectancy (average life  expectancy in years) based on GDP (gross domestic product per capita in $US). Report the intercept and slope coefficients and interpret their meaning in the context of the dataset. What does the R² value tell you about how well GDP explains variation in life expectancy across countries? 
+
+```{r}
+
+# Fit simple linear regression:
+
+LE_GDP_model <- lm(LifeExpectancy ~ GDP, data = data_2)     # all 217 observations are used since the NAs in GDP and LE were imputed.
+
+# View the model summary
+summary(LE_GDP_model)
+
+```
+**Interpretation**
+
+Both coefficients are statistically significant with p<<.05.
+
+The intercept of about 69.4 years (at GDP 0) is only mathematically meaningful.
+The slope of about .00023 indicates that LifeExpectancy increases about 0.00023 years above 69.4 years for every dollar increment of GDP. E.g., for a median GDP of $5950, LE is 69.2+.00023*5950= 70.57 years. For a max GDP of $114340, LE is 95.5 years.  People in the richest countries live an average of 25 years longer.
+The residual standard error of about 6 years is rather high meaning that the linear prediction is not accurate.
+The multiple R-squared of 0.3524 indicates that the linear model predicts about 35% of the variance of LE based on GDP per capita, which is a rather poor fit. 
+
+**3. Multiple Linear Regression (Fitting and Interpretation)**
+
+Fit a multiple linear regression  model to predict LifeExpectancy using GDP, Health (percentage of government expenditures on healthcare), and Internet (percentage of population with internet access) as predictors. Interpret the coefficient for Health, explaining what it means in terms of life expectancy while controlling for GDP and Internet. How does the adjusted R² compare to the simple regression model from Question 1, and what does this suggest about the additional predictors? 
+
+
+ 
+```{r}
+# Fit multiple linear regression:
+
+LE_GDP_Health_Internet_model <- lm(LifeExpectancy ~ GDP + Health + Internet, data = data_2)    # all 217 observations are used
+
+# View the model summary
+summary(LE_GDP_Health_Internet_model)
+
+```
+**Interpretation**
+
+The intercept, Health and Internet are statistically significant predictors with p<<0.05. However, GDP, with p about 0.1 is not a statistically significant predictor.
+The intercept of 59.4 years (at GDP=0,Health=0,Internet=0) is only mathematically meaningful.
+
+GDP coefficient indicates that $1 increment in GDP increases LE by 0.00003 years.
+Health coefficient indicates that each 1% increment in health expenditure increases LE by .24 years.
+Internet coefficient indicates that each 1% increment in population using internet increases LE by .18 years.
+
+The residual standard error of 4 years is smaller than for the simple linear regression, thus the multiple linear model is better. The 213 degrees of freedom were calculated as: n-p-1 (217-3-1).
+
+The Adjusted R-squared indicates that about 69.8% of the variance in LE is explained by this model. This is not a very good fit, but it is much higher than the 34% obtained with the simple model. Adding the 2 variables (Health and Internet) improved the predictability of the model.
+
+
+**4. Checking Assumptions (Homoscedasticity and Normality)**
+
+For the simple linear regression model from Question 1 (LifeExpectancy ~ GDP), describe how you would check the assumptions of homoscedasticity and normality of residuals. For each assumption, explain what an ideal outcome would look like and what a violation might indicate about the model’s reliability for predicting life expectancy. Afterwords, code your answer and reflect if it matched the ideal outcome. 
+
+**Answer**
+
+To examine the assumptions of normality and homoscedasticity of residuals, I would first look at the output of the lm() residual statistics, then I would do a visual examination of the residuals using scatter plot and also the 4 diagnostic plots from the R package: residuals vs. fitted, Q-Q, residuals vs. leverage, and scale location. For a normal distribution of residuals the statistics should show a uniform distribution around the mean. The visual examination of residuals should show a homogeneous spread the entire range of indeces (order). Likewise, homoscedasticity should be obviated by uniform scatter around zero and no lumping at the ends or extreme deviation from a horizontal. If the residual metrics, particularly R-squared, is not above 70%, I would not trust the ability of the model to predict the dependent variable with high degree of confidence, and I would adjust the model. Here's the process:
+
+## Linear examination with plots of scatter and of residuals
+
+```{r}
+plot(data_2$GDP, data_2$LifeExpectancy,
+     xlab="GDP ($)", ylab="Life Expectancy (y)", main="Life Expectancy vs GDP per capita")
+abline(LE_GDP_model, col=1, lwd=2)
+
+plot(resid(LE_GDP_model), type="b", main="Residuals vs Order", ylab="Residuals")
+abline(h=0, lty=2)
+```
+
+
+**Visually** it can be seen that GDP per capita is a terrible single-variable predictor of LifeExpectancy. The predicted line shows large errors and nonuniform scatter for the observations at GDP<$30K, and large residuals (from -15 to 10 years) at various locations of the GDP range.
+
+
+
+```{r}
+# set up the 2x2 grid of diagnostic plots; fill them with the 4 diagnostics plots; reset the plot to a single 1x1 plot.
+
+par(mfrow=c(2,2)); plot(LE_GDP_model); par(mfrow=c(1,1))
+```
+
+
+**Residuals vs Fitted:** Both scatter plot (LE vs GDP) and residuals vs fitted plot show very strong deviation from linearity at the lowest range of GDP (up to $15,000) and lower range of life expectancy (up to 72 ).  The residuals vs fitted values follow a straight line of negative slope, meaning that observed life expectancy is smaller than predicted values at the higher range of GDP. This shows unequal variance — larger GDP countries might have bigger prediction errors than smaller GDP ones. The residuals are not evenly scattered around zero, indicating that the homoscedasticity assumption is not met. Thus the simpler model is not adequate, as also shown in part 2 of this homework.
+
+**Scale–Location:** Spread is largest at the low end of LifeExpectancy. Showing heteroscedasticity (variance grows for low GDP low LifeExpectancy predictions.)
+
+**Q–Q plot:** The quantile residual deviations are largest for the left tail and mild for the right tail. The mean and first quantiles display normality. But overall, the residuals for the second and higher quantilies do not show normality.
+
+**Residuals vs Leverage:** There is high leverage point with strong negative residual.
+
+The Cook’s distance is significant but does not influence the model substantially. 
+
+
+
+**5. Diagnosing Model Fit (RMSE and Residuals)**
+
+For the multiple regression model from Question 2 (LifeExpectancy ~ GDP + Health + Internet), calculate the RMSE and explain what it represents in the context of predicting life expectancy. How would large residuals for certain countries (e.g., those with unusually high or low life expectancy) affect your confidence in the model’s predictions, and what might you investigate further? 
+
+
+```{r}
+
+# Calculating the residuals for the 3 variables model:
+
+resid_LE_GDP_Health_Internet <- resid(LE_GDP_Health_Internet_model)
+
+# Calculate RMSE
+
+rmse_LE_GDP_Health_Internet <- sqrt(mean(resid_LE_GDP_Health_Internet^2))
+rmse_LE_GDP_Health_Internet
+
+# For comparison, calculate residuals for 1 variable model
+
+resid_LE_GDP <- resid(LE_GDP_model)
+
+# Calculate RMSE 
+
+rmse_LE_GDP <- sqrt(mean(resid_LE_GDP^2))
+rmse_LE_GDP
+
+
+```
+The RMSE of about 4 shows that the 3-variable model misses predictions from the model by about 4 years of life expectancy, in the average.
+In comparison, the 1-variable model was worse, missing predictions by about 6 years in average.
+
+The results from section 3 above for the 3-variable model giving an Adjusted R-squared of 0.6984 (about 70% prediction of the variance of LE) reaffirms that the 3-variable model is acceptable, although it should be improved.
+
+I would not have confidence in this model for predicting LE in countries with very low or very high GDP per capita or with very high Health investment.
+
+To improve the model one option is to include the more significant variables, removing the least significant ones. For example, one could remove GDP since it is not a good predictor, and include DeathRate, which by definition should be a good predictor of LifeExpectancy.  I did that below.
+
+
+```{r}
+# Fit multiple linear regression to a 3-variable model including DeathRate
+
+LE_Health_Internet_DeathRate_model <- lm(LifeExpectancy ~ Health + Internet + DeathRate, data = data_2)    # all 217 observations are used
+
+# View the model summary
+summary(LE_Health_Internet_DeathRate_model)
+
+```
+```{r}
+# do component and residual plots for the 3-variable model:
+
+crPlots(LE_Health_Internet_DeathRate_model)
+```
+
+This combination of variables (Health, Internet and DeathRate) shows excellent p<<.05 for all 3 variables, and an Adjusted R-Squared of 73%, an improvement over the previous models.
+
+
+**6. Hypothetical Example (Multicollinearity in Multiple Regression)**
+
+Suppose you are analyzing the AllCountries dataset and fit a multiple linear regression model to predict CO2 emissions (metric tons per capita) using Energy (kilotons of oil equivalent) and Electricity (kWh per capita) as predictors. You notice that Energy and Electricity are highly correlated. Explain how this multicollinearity might affect the interpretation of the regression coefficients and the reliability of the model. 
+
+**Answer**
+
+If there is a strong correlation among the variables (Energy, Electricity) the standard error coefficients for CO2 emissions vs Energy/Electricity may be inflated. The p-values may seem not significant although an R-squared value may show good fit. One would need to test a model with only Energy or Electricity as variable, and adopt it if the R-squared value improves.
+
+Let's try it:
+
+```{r}
+
+# check correlations among variables
+
+cor(data_2[, c("CO2", "Energy", "Electricity")], use = "complete.obs")
+
+```
+
+Electricy and Energy are strongly correlated (0.80).
+
+Do a multilinear regression for CO2 (Energy, Electricity)
+
+```{r}
+# Fit multiple linear regression
+
+CO2_Energy_Electricity_model <- lm(CO2 ~ Energy + Electricity, data = data_2)    # all 217 observations are used
+
+# View the model summary
+summary(CO2_Energy_Electricity_model)
+
+# Plot residual and and component for the 2 variable model
+crPlots(CO2_Energy_Electricity_model)
+
+
+```
+
+R-squared- 0.777 is a good fit, but not excellent. I notice that the p for intercept does not have a value lower than p<.05. Also notice that both Energy and Electricity with p<<0.05 are significant (although correlated). Electricity has a small negative value (leading to a decrease of CO2 emissions with increase in electricity), which makes sense. The residual plots show linearity for Energy, but heteroscesdaticity for Electricity.  
+
+To test whether the model can be improved by dropping Electricity, try:
+
+
+```{r}
+# Fit 1-variable linear regression
+
+CO2_Energy_model <- lm(CO2 ~ Energy,  data = data_2)    # all 217 observations are used
+
+# View the model summary
+summary(CO2_Energy_model)
+
+
+```
+
+In this case, I observe that R-squared has decreased to 0.6805.  **So, the 2-parameter model seems better.** Thus, although there is correlation among Energy and Electricity, multicollinearity does not affect the model. To visualize each variable independently, let's use 2 simple 2D plots for expediency.
+
+```{r}
+
+
+plot(y=data_2$CO2, x=data_2$Energy,
+     xlab="Energy", ylab="CO2", main="CO2 vs Energy")
+abline(lm(CO2 ~ Energy, data= data_2), col='red', lwd=2)
+
+plot(y=data_2$CO2, x=data_2$Electricity,
+     xlab="Electricity", ylab="CO2", main="CO2 vs Electricity")
+abline(lm(CO2 ~ Electricity, data= data_2), col='blue', lwd=2)
+
+```
+**Conclusion on part 6**
+
+The visual examination of the  fit shows that neither Energy nor Electricity variables separately are perfect predictors of CO2. As stated above, Electricity heteroscesdaticity is obvious (broad scatter). The model including both Energy and Electricity displays a more significant R-square value and is preferred.
+
+
+**Publication**
+
+Published at https://rpubs.com/rmiranda/1364312
+
