@@ -1,0 +1,214 @@
+---
+title: "Homework 8"
+author: "Raul Miranda"
+date: "2025-10-28"
+output:
+    html_document: default
+#    pdf_document: 
+#    latex_engine: xelatex
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library (tidyverse)
+
+```
+In your markdown answer the following problems. Include the following: 
+
+- Your hypotheses
+
+- p-value 
+
+- conclusion 
+
+
+
+**Problem 1**
+
+ACTN3 is a gene that encodes alpha-actinin-3, a protein in fast-twitch muscle fibers, important for activities like sprinting and weightlifting. The gene has two main alleles: R (functional) and X (non-functional). The R allele is linked to better performance in strength, speed, and power sports, while the X allele is associated with endurance due to a greater reliance on slow-twitch fibers. However, athletic performance is influenced by various factors, including training, environment, and other genes, making the ACTN3 genotype just one contributing factor. A study examines the ACTN3 genetic alleles R and X, also associated with fast-twitch muscles. Of the 436 people in this sample, 244 were classified as R, and 192 were classified as X. Does the sample provide evidence that the two options are not equally likely? Conduct the test using a chi-square goodness-of-fit test. 
+
+**Answer**
+
+This is a goodness-of-fit test, with one variable (presence of a specific allele of ACTN3 related to athletic performance) and two categories (presence of R allele and presence of X allele). Of 436 cases, 244 possess R and 192 possess X alleles. We want to test whether the observed difference is statistically significant. 
+
+
+**Hypotheses**
+
+The null hypothesis is that both proportions are the same, while the alternative hypothesis is that the proportions are statistically different.
+
+$H_0$: $p_1$ = $p_2$ = 1/2
+
+$H_a$: $p_1$ $\neq$ $p_2$ $\neq$ 1/2 
+
+
+```{r}
+# Observed counts
+observed <- c(244, 192)
+
+# Null values
+null_proportions <- c(1/2, 1/2)
+
+``` 
+
+Check the expected values to make sure that we can preform the Chi-square test
+
+```{r}
+# Expected values
+expected_values <- null_proportions*sum(observed) 
+expected_values
+```
+
+All are greater than 5 and we can perform the chi-square test.
+
+
+```{r}
+# Perform chi-squared goodness-of-fit test
+chisq.test(observed)
+```
+
+
+Based on the p-value of 0.01276 (less than .05), we reject the hypothesis that the outcomes are equally likely and conclude that the probabilities of getting R and X allenes are statistically different with 95% confidence.
+
+*Note* the null was not included in the chisq.test() because the probabilities are assumed to be the same. 
+
+
+**Problem 1 Conclusion**
+
+ p-value = 0.01276. It is close to zero thus there is significant evidence that the probabilities of obtaining R or X allenes are different.
+
+
+
+
+**Problem 2**
+
+Who Is More Likely to Take Vitamins: Males or Females? The dataset NutritionStudy contains,  among other things, information about vitamin use and the gender of the participants. Is there a  significant association between these two variables? Use the variables VitaminUse and Gender to conduct a chi-square analysis and give the results. (Test for Association) 
+
+**Answer**
+
+This is a test of association between gender and likelihood of taking vitamins, using data from the NutritionStudy dataset.
+
+Loading the dataset, assumed to be located in the same directory as the rmd code. Read the dataset and summary its variables.
+
+```{r warning=FALSE, message=FALSE}
+
+setwd(getwd())       # set the wd to the location of the rmd code
+
+df<- read_csv("NutritionStudy.csv")
+
+summary(df)
+```
+
+```{r}
+
+# create table with the specific variables Sex and VitaminUse and show it
+
+observed_dataset<- table(df$Sex, df$VitaminUse)
+observed_dataset
+```
+
+
+**Hypotheses**
+
+The null hypothesis is that VitaminUse is not associated with Sex, while the alternative hypothesis is that both variables are associated.
+
+$H_0$: VitaminUse is not associated with Sex.
+
+$H_a$: VitaminUse is associated with Sex.
+
+
+
+```{r}
+
+# Perform the Chi square test:
+
+chisq.test(observed_dataset)
+
+```
+
+
+Based on the p-value smaller than 0.05, therefore, we reject the hypothesis that VitaminUse is not associated with Sex and conclude that the association of VitaminUse with Sex is statistically significant with 95% confidence.
+
+
+**Problem 2 Conclusion**
+
+ p-value = 0.003944. It is close to zero thus there is statistical significance of the association between VitaminUse and Sex.
+
+
+
+**Problem 3**
+
+Most fish use gills for respiration in water, and researchers can observe how fast a fish's gill cover beats to study ventilation, much like we might observe a person's breathing rate. Professor Brad Baldwin is interested in how water chemistry might affect gill beat rates. In one experiment, he randomly assigned fish to tanks with different calcium levels. One tank was low in calcium (0.71 mg/L), the second tank had a medium amount (5.24 mg/L), and the third tank had water with a high calcium level (18.24 mg/L). His research team counted gill rates (beats per minute) for samples of 30 fish in each tank. The results are stored in FishGills3. Perform ANOVA test to see if the mean gill rate differs depending on the calcium level of the water. 
+
+**Answer**
+
+We will do an Anova test to examine whether fish breathing rate (mean gill rates) depend on water calcium level using 3 populations of fish in 3 water tanks containing different levels of calcium.
+
+Loading the FishGills3 dataset, assumed to be located in the same directory as the rmd code. Read the dataset and summary its variables.
+
+```{r}
+
+setwd(getwd())       # set the wd to the location of the rmd code
+
+df<- read_csv("FishGills3.csv")
+
+# Summary the basic stats of df, show the top 6 rows, and calculate the mean gill rates grouped by calcium level
+
+summary(df)
+df |> group_by (Calcium) |> summarize (mean_gillrate = mean(GillRate))
+
+
+```
+One can observe that in general the breathing rate is inversely proportional to calcium level, with the largest difference appearing between low to medium calcium level.
+
+
+**Hypotheses**
+
+The null hypothesis is that the mean gill rates for the 3 calcium levels is the same.  The alternative hypothesis that at least one mean gill rate is different from the others.
+
+$H_0$: $\mu_L$ = $\mu_M$ = $\mu_H$
+
+$H_a$: not all $\mu_i$ are equal
+
+
+```{r}
+# Perform ANOVA
+
+anova_result <- aov(GillRate ~ Calcium, data = df)
+
+anova_result
+
+
+```
+
+
+```{r}
+
+#Do the summary() to get degrees of freedom, F value, and p-value 
+
+summary(anova_result)
+```
+
+The p-value is very small (0.0121): indicating strong evidence against the null hypothesis. The Anova tests suggests that there are significant differences in gill rates depending on the calcium level.
+
+Following the class activity, do the Tukey's Honestly Significant Difference (HSD) test on the ANOVA model.
+
+```{r}
+# Tukey's Honestly Significant Difference (HSD) test on the ANOVA model
+library(tidyverse)  #ensure tidyverse is loaded
+
+TukeyHSD(anova_result)
+
+```
+The HSF test shows that the largest difference between GillRate means is produced by the change of calcium level from Low to High, yielding the highest statistical significance (p= 0.022). The difference between GillRate means produced by the change of calcium level from Low to Medium is almost as significant (p= 0.031). The difference between GillRate means produced by the change of calcium level from Medium to High is not statistically significant (p= 0.991). 
+
+
+
+**Problem 3 Conclusion**
+
+ p-value = 0.0121. The fish breathing rate (mean gill rate) significantly differs depending on the calcium level in water. That dependence is inversely proportional. I checked that out and it makes sense. High calcium levels make gill membranes "harder", impermeable to vital ions (such as Na+ and K+). Low calcium levels make membranes permeable and induce faster loss of vital ions. To restore ionic balance, fish need more energy, hence pump more water (breathe harder) to get more oxygen. The difference in mean_gillrate shows that such effect is most pronounced and statistically significant when calcium level increases sevenfold (from 0.71 to 5 mg/L); and is statistically insignificant when increasing further from 5 to 18 mg/L, probably because membranes are already saturated with calcium by the time water reaches 3 mg/L.  
+ 
+ **Published**
+ 
+ Published at https://rpubs.com/rmiranda/1361375
+ 
