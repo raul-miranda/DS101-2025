@@ -1,0 +1,1132 @@
+---
+title: "FINAL PROJECT - Finding Happiness in Innovation"
+author: "Raul Miranda"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+Do the necessary library installations
+
+```{r}
+# install.packages("tidyverse", "factoextra", "ggrepel")
+    library(tidyverse)
+    library(dplyr)
+    library(ggplot2)
+    library(caret)
+    library(readr)
+    library(factoextra)  # for biplot
+    library(ggrepel)
+
+
+```
+
+# Title: Finding Happiness in Innovation
+<br>
+
+## a. Introduction. Variable Definitions.
+
+The primary question in this study is: **Are happier countries more innovative and progressive?**  If so, **which factors contribute to making them the most innovative?**
+
+The question is silly when applied to humans. Of course, happier people are more productive in their endeavors! And conversely they are less inventive and less productive when they are unhappy. But are countries like that? The answer is not trivial. As an example, countries are at the unhappiest period of their existence during wars. Yet, two of the most innovative periods for the US were during the Manhattan project (WWII era) and the Cold War era. And some of the great civilizations in history thrived while invading others or when facing adversity and competition. Thus, the answer depends on which country and period in history we are referring to. 
+
+I don't have a preconceived answer and this project is meant to scratch the surface of the problem. The approach will be to postulate variables that quantify or encourage innovation, and then to postulate variables that affect it, including degree of happiness. Naturally, some variables will influence innovation more than others and the goal will be to reduce the number of variables to the most influential. We will therefore use Principal Component Analysis (PCA) to statistically determine a set of orthogonal variables (principal components), and construct a reduced model that still explains a significant fraction of the observations and their variance from a null regression model. Happiness may or not emerge among the significant variables in our data. But we will determine its relative weight in the principal components.
+
+How to measure country Innovation?  I will use a very well established index called Global Innovation Index (GII), developed and maintained by the World Intellectual Property Office (WIPO). The GII is a real number between 0 and 100, derived from the statistical analysis of 80 separate indicators (https://www.wipo.int/en/web/global-innovation-index) for over 150 countries, and used by strategists and policy makers worldwide. Below I give the link to the actual source of the compiled index since 2011.
+
+How to measure country Happiness? I will use the well known Happiness index (https://www.worldhappiness.report/about/), a real number between 0 and 10, based on a Gallup World Poll of over 140 countries since late 2011, where representative samples of citizens answer this question:  On which step of a ladder, the so-called Cantril Self-Anchoring Striving Scale, would you personally feel you stand at this time (0 at the bottom, the worst situation, and 10 at the top, the best life for you)?  The Reports emerging from this polling are subjective measures of current well-being of individuals in a country and have been used by the United Nations General Assembly to support some of their proposed measures. The latest report is from 2025 (https://www.gallup.com/analytics/349487/world-happiness-report.aspx.) 
+
+How do we identify the other independent variables? We are really seeking variables that potentially may impact both Innovation and Happiness, as we want to answer the question of the importance of personal happiness to country innovation. Thus I avoided attempting to reproduce the 80 indicators on which GII is based, and identified 19 from the World Bank Development Indicators that may influence both Innovation and Happiness. Below I give more details and the links. 
+
+Most of the World Bank indicators are available since at least 2000. But the GII is available since 2011 and the Happiness index since late 2011, which limits the validity of our PCA model to the 2011-2024 period.
+
+The 21 World Bank independent variables are all numerical and measure: (1) Infrastructure, (2) Research and manufacturing investment, (3) Human capital, (4) Knowledge output, (5) National effectiveness. Individuals are happier and nations more innovative when they have appropriate resources, progressive societies, government encouragement, security of health, education and livelihood. 
+
+Quantitative variable names and World Bank indicator codes:
+
+Infrastructure:
+
+1. Access to electricity (% of population)	- EG.ELC.ACCS.ZS
+
+2. Electric power consumption (kWh per capita) -	EG.USE.ELEC.KH.PC
+
+3. Secure Internet servers (per 1 million people) - IT.NET.SECR.P6
+
+4. Individuals using the Internet (% of population) - IT.NET.USER.ZS
+
+Research and advanced manufacturing investment:
+
+5. Research and development expenditure (% of GDP) -	GB.XPD.RSDV.GD.ZS
+
+6. Foreign direct investment, net (BoP, current US$) - BN.KLT.DINV.CD
+
+7. Medium and high-tech manufacturing value added (% manufact. value added) - NV.MNF.TECH.ZS.UN
+
+Human capital:
+
+8. Life expectancy at birth, total (years)	- SP.DYN.LE00.IN
+
+9. Domestic general government health expenditure per capita, PPP (interntl $) - SH.XPD.GHED.PP.CD
+
+10. Unemployed with advanced education (% of labor force with advanced education) - SL.UEM.ADVN.ZS
+
+11. Government expenditure on education, total (% of GDP) - SE.XPD.TOTL.GD.ZS
+
+12. Completed upper secondary educ., pop. 25+, total (%) - SE.SEC.CUAT.UP.ZS
+
+Knowledge output:
+
+13. Researchers in R&D (per million people) -	SP.POP.SCIE.RD.P6
+
+14. Patent applications, residents - IP.PAT.RESD
+
+15. Scientific and technical journal articles (per million people)- IP.JRN.ARTC.SC
+
+16. High-technology exports (% manufactured exports) - TX.VAL.TECH.MF.ZS
+
+17. ICT service exports (BoP, % service exports) - BX.GSR.CCIS.ZS
+
+National effectiveness:
+
+18. GDP, PPP (current interntl $) - NY.GDP.MKTP.PP.CD - measure of country wealth
+
+19. GDP per person employed, (current interntl $) - SL.GDP.PCAP.EM.KD - measure of productivity
+
+20. GNI per capita, Atlas method (current US$) - NY.GNP.PCAP.CD - measure of individual wealth - it is also the basis for the World Bank's classification of country by income level in 2024:
+
+Low income: $1,145 or less
+
+Lower-middle income: $1,146–4,515
+
+Upper-middle income: $4,516–14,005
+
+High income: $14,006 or more
+
+21. Adjusted net national income (current US$) - GNI minus consumption of resources - NY.ADJ.NNTY.CD
+
+
+I focused mainly on the Principal Component Analysis tasks to explain the 2011-2024 data, and didn't explore in detail the interesting aspects of understanding how countries achieve leading innovator status and how they have benefited from having an overall happier society.
+
+
+<br>
+
+## b. Source databases.
+
+The link to the bound dataset used in this study is https://raw.githubusercontent.com/raul-miranda/DS101-2025/refs/heads/main/worldbank_gii_happiness.csv. It contains 5425 rows.
+
+To produce it, I compiled the World Development Indicators mentioned above from http://data.worldbank.org/, and downloaded the set to my github repository.
+
+Link to repo: https://github.com/raul-miranda/DS101-2025
+
+Name of the dataset:  worldbankindicators_2000_2024_expanded.csv.
+
+The Global Innovation report for 2025 is available at WIPO: https://www.wipo.int/en/web/global-innovation-index. However, the compilation of Global Innovation Indexes (GII) with all the supporting indicators is only made available upon paid membership. I found a compilation of the overall GII at kaggle that has been downloaded many times and has not received negative comments. The downloadable zip file is at https://www.kaggle.com/datasets/karlakovacs/global-innovation-index-wipo-2011-2024-data?resource=download.
+
+Name of the dataset: GII_2011_2024_long_format.csv. 
+
+The World Happiness Report is available at https://www.worldhappiness.report/data-sharing/. (Direct download link: https://files.worldhappiness.report/WHR25_Data_Figure_2.1v3.xlsx?_gl=1*kq8vgr*_gcl_au*MTA1MzA2NDk3My4xNzY0NjM3MTQx). The Gallup poll results are available in their annual report. The happiness index is reported as a 3-year rolling average. Our World In Data offers the same data for free at https://ourworldindata.org/grapher/happiness-cantril-ladder.
+
+Name of the dataset: happiness-cantril-ladder.csv. 
+
+Datasets are tabulated by country_name, country_code and year. The original bound data set contains about 5400 records in the 2000-2024 period (long format), but not all countries reported complete information.
+<br>
+
+
+## c. Dataset preparation
+
+Here I read and bind the 3 raw datasets (World Bank, GII, and Happiness) and produce a compiled file containing 23 columns and 5425 rows, which is uploaded to my repo at https://raw.githubusercontent.com/raul-miranda/DS101-2025/refs/heads/main/worldbank_gii_happiness.csv.
+<br>
+
+```{r}
+
+setwd(getwd()) # ensure we're at the directory where the RMD is running; but the next read_csvs are from my github acct
+
+gii_data <- read_csv("https://raw.githubusercontent.com/raul-miranda/DS101-2025/refs/heads/main/GII_2011_2024_long_format.csv", show_col_types = FALSE)
+happiness_data <- read_csv("https://raw.githubusercontent.com/raul-miranda/DS101-2025/refs/heads/main/happiness-cantril-ladder.csv", show_col_types = FALSE)
+worldbank_data <- read_csv("https://raw.githubusercontent.com/raul-miranda/DS101-2025/refs/heads/main/worldbankindicators_2000_2024_expanded.csv", show_col_types = FALSE)
+
+
+```
+<br>
+
+Bind datasets. Exclude columns "Rank" from gii_data, and "Entity" from happiness_date. Rename "Score" to "innovation_score" and "Cantril ladder score" to "happiness_score". Rename "Country name" to "name", "Country code" to "code", and "Year" to "year". Write out the bound file to my folder for manual upload to github.
+
+Examine the top rows of bound_set and take a peek at its variable structure.
+
+
+```{r}
+
+bound_set <- worldbank_data |> left_join(select(gii_data, -"Rank"), by= c("Country Code"= "Country", "Year"="Year")) |> left_join(select(happiness_data, -"Entity"), by= c("Country Code"="Code", "Year"="Year")) |>
+
+rename (name = "Country Name", code = "Country Code", year = Year, innovation_score = Score, happiness_score = "Cantril ladder score")
+
+write.csv(bound_set, "worldbank_gii_happiness.csv", row.names = FALSE)  #write it out to my project folder
+
+
+head (bound_set, 3)
+str(bound_set)
+```
+
+<br>
+
+
+## d. Dataset cleaning
+
+<br>
+
+Happiness_score value for 2013 is NA for all countries; and for 2022 is NA for some countries. Since the score values reported by Gallup are a 3-year rolling average, I imputed the NA 2013 with the average of 2012 and 2014; and the NA 2022 with average of 2021 and 2023. 
+
+```{r}
+bound_set <- bound_set |> group_by(code) |>
+  mutate (happiness_score = if_else (year==2013 & is.na(happiness_score), 
+    (lag(happiness_score, n=1, order_by=year) + lead(happiness_score, n=1, order_by = year))/2, #lag() is 2012, lead() is 2014
+    happiness_score)) |>
+  mutate (happiness_score = if_else (year==2022 & is.na(happiness_score), 
+    (lag(happiness_score, n=1, order_by=year) + lead(happiness_score, n=1, order_by = year))/2, #lag() is 2021, lead() is 2023
+    happiness_score)) |>  ungroup()
+
+head(bound_set,16)
+
+```
+
+<br>
+
+Produce a reduced dataset for further processing: reduced dataset for years 2011-2024, when most Word Bank indicators are available, although still missing many innovation and happiness scores. 
+
+
+```{r}
+
+years_11_24  <- bound_set |> filter( year >= 2011 & year <= 2024) 
+
+colSums (is.na(years_11_24))
+
+```
+
+<br>
+
+We will create a reduced subset of years_11_24 that drops countries that have NA for all innovation_score and then drops countries that have NA for all happiness_score. Having at least one innovation_score and one happiness_score is absolutely necessary to maintain a country on the list -- we cannot impute scores with means when they are missing completely. 
+
+But leave countries that have at least one non-NA in innovation_score or in happiness_score.
+
+```{r}
+
+years_11_24_no_is_no_hs  <- years_11_24 |> group_by(code)   |> 
+                filter(any(!is.na(innovation_score))) |>
+                filter(any(!is.na(happiness_score)))  |> ungroup()
+colSums (is.na(years_11_24_no_is_no_hs))
+
+```
+<br>
+
+Some countries did not report of all the economic variables in years 2022-2024, and the dataset shows them as zero. In general, most economic variables do not change radically over 2 or 3 years. To avoid negatively biasing the data, I will impute the zeros in 2022 with the 2021 values, the zeros in 2023 with the 2022 values, and the zeros in 2024 with the 2023 values, in that order. This is more appropriate than imputing with the mean or median for the 2011-2024  values, in particular if we want to display a time series and not show a sudden decrease in the variables in 2022-2024. Some countries have not reported some of the variables during the entire 2011-2024 period, but we will not falsely impute those cases.
+
+
+```{r}
+years_11_24_no_is_no_hs_imputed <- years_11_24_no_is_no_hs |> 
+group_by(code) |> 
+
+  mutate(across(where(is.numeric) & !year,  ~{            # do this for every numeric col except year
+    prev_yr <- lag(.x, n=1, default=NA)          # gather the col value for previous year relative to the current row
+    ifelse(year == 2022 & .x == 0, prev_yr, .x) })) |>    # if 2022 is zero, impute with 2021; do this for the entire dataset
+
+  mutate(across(where(is.numeric) & !year,  ~{            # go back to the beginning and repeat
+    prev_yr <- lag(.x, n=1, default=NA)          # gather the previous year value
+    ifelse(year == 2023 & .x == 0, prev_yr, .x) }))  |>   # if 2023 is zero, impute with 2022; do this for the entire dataset
+  
+  mutate(across(where(is.numeric) & !year,  ~{            # go back to the beginning and repeat
+    prev_yr <- lag(.x, n=1, default=NA)          # gather the previous year value
+    ifelse(year == 2024 & .x == 0, prev_yr, .x) })) |>   # if 2024 is zero impute with 2023.
+
+  ungroup()   #restore things
+
+#note: could have done a for-loop, but for 3 years the loop is not more efficient or clearer than just repeating the code.
+```
+
+
+<br>
+WIPO assigned innovation scores of -1 to several countries/years (mainly undeveloped ones) when lacking data. I will impute the -1 innovation score and the remaining NA happiness score with the averages for each country in the 2011-2024 year period. 
+
+
+```{r}
+
+years_11_24_no_is_no_hs_imputed <- years_11_24_no_is_no_hs_imputed |> 
+
+  group_by(code) |> mutate(
+    innovation_score = if_else(innovation_score==-1, mean(innovation_score[innovation_score != -1], na.rm=TRUE ),innovation_score),  #exclude -1 scores when calculating the mean()
+    happiness_score = if_else(is.na(happiness_score), mean(happiness_score, na.rm=TRUE), happiness_score)) |>
+  ungroup()
+colSums (is.na(years_11_24_no_is_no_hs_imputed))
+
+
+
+```
+<br>
+
+## e. Exploratory data analysis
+
+Structure and summary of working dataset.
+
+Get the basic stats of the innovation score and the happiness score and show a plot.
+
+```{r}
+
+str(years_11_24_no_is_no_hs_imputed)
+
+summary(years_11_24_no_is_no_hs_imputed)
+
+cat("Innovation Score (0-100)","\n"); summary(years_11_24_no_is_no_hs_imputed$innovation_score)
+cat("Happiness score (0-10)", "\n"); summary (years_11_24_no_is_no_hs_imputed$happiness_score)
+ggplot(data = years_11_24_no_is_no_hs_imputed, aes(x = happiness_score, y = innovation_score)) +
+  geom_point() +
+  labs(title = "Country Innovation vs Happiness",
+       x = "Happiness (0-10)",
+       y = "Innovation (0-100)") +
+  theme_minimal()
+
+# plot it also on a log(y) scale for clarity
+
+ggplot(data = years_11_24_no_is_no_hs_imputed, aes(x = happiness_score, y = innovation_score)) +
+  geom_point() +
+  scale_y_log10() +
+  labs(title = "Country Innovation vs Happiness",
+       x = "Happiness (0-10)",
+       y = "Innovation (0-100)") +
+  theme_minimal()
+
+
+```
+
+<br>
+
+The first scatterplot shows a higher than linear correlation with significant scatter at the lower I and H values. The log(innovation) vs happiness appears more linear and positively correlated, with much scatter in the lower half. This indicates that happiness is not a complete predictor of innovation, and that other related factors are important, which will become obvious as we carry out the multi-factor PCA.  
+
+
+## f. Preparation for PCA 
+
+<br>
+Now, in preparation for PCA, we produce a training set and a testing set. We will use the training set to do the PCA, and get eigenvectors and eigenvalues. Then we will project both the training and testing sets into a reduced dimensional space defined by the leading principal components. We will use the same transformation (means, sds, and PCs) derived from the training set to project both the training and testing sets. A comparison of outcomes will allow us to evaluate the generalizability of the PCA model.
+
+Will use R's sample() function to split the data into a training set (80%) and a test set (20%).
+
+```{r}
+
+set.seed(123) #   set.seed generates a reproducible seed for the random number generator
+
+training_idx <- sample(1:nrow(years_11_24_no_is_no_hs_imputed), 0.8 * nrow(years_11_24_no_is_no_hs_imputed))
+
+training_11_24  <- years_11_24_no_is_no_hs_imputed [training_idx, ]         # this is the training set, with ca 1610 rows
+testing_11_24   <- years_11_24_no_is_no_hs_imputed [-training_idx, ]        # this is the test set, with ca 410 rows
+
+```
+
+<br>
+**Centering and scaling variables**
+
+Following with the preparation for PCA, let's center and scale all numeric variables across all rows (not by country), that is, do (variable - mean(variable))/sd(variable). We will use R's scale() rather than manual centering and scaling.   And extract only the numeric values without year column for the training and testing sets.
+
+First scale the training set, and then the testing set using the same means and sd to preserve consistency and generalizability of the PCA model. 
+
+```{r}
+
+training_11_24_scaled <- training_11_24 |> select(where(is.numeric), -year) |> # training data without year
+  scale(center=TRUE, scale=TRUE)                                               # scale the training data
+training_mean <- attr(training_11_24_scaled, "scaled:center")  # remember the means from the scaled training data
+training_sd <- attr(training_11_24_scaled, "scaled:scale")     # remember the sd from the scaled training data
+
+testing_11_24_scaled <- testing_11_24 |> select(where(is.numeric), -year) |>  # testing data without year
+  scale(center=training_mean, scale=training_sd) # scale the testing data with the same training set means and sd
+
+```
+
+<br>
+
+## g. PCA of the training set and Interpretation
+
+Now, do PCA, and plot the eigenvalues in order of importance. (Scree plot.)
+
+```{r}
+
+training_11_24_pca <- prcomp(training_11_24_scaled, center = TRUE, scale. = TRUE)   
+
+plot(training_11_24_pca, type="lines")   # this is the Scree plot, with an apparent "shoulder" at PC 3 to 4.
+```
+<br>
+
+**Scree plot**
+
+Clearly, the first 3 or 4 eigenvalues show that the first 3 to 4 eigenvectors (PCs) carry a very significant proportion of the variance.
+
+But, for better analysis, show the basic statistics of the PCs.
+
+```{r}
+
+summary (training_11_24_pca)
+
+```
+
+<br>
+
+**Importance of components**
+
+Standard deviation: shown for each PC, in decreasing order of importance. The eigenvalues by def. are the squares of the standard deviations. 
+
+Proportion of variance: calculated for each PC as the eigenvalue/sum(all eigenvalues), capturing the fraction of the total variance explained by the PC. For example, PC1 captures 41.2% of the variance, PC2 captures the next 14.7% of the variance, and so on.
+
+Cumulative Proportion: the cumulative sum of proportion of variances. For example, PC1-PC2 capture 56% of the variance; PC1-PC8: 83%.
+
+PC1-PC2 is adequate for a rapid visual examination; however, we need PC1-PC8 to cover at least 80% of the variance.
+
+The Kaiser criterion says that we should keep all PCs with eigenvalues greater than 1, that is with variance greater than 1 SD. This would mean PC1-PC5, that explain 72% of the total variance. 
+
+For testing accuracy, we will continue considering 5 PCs to capture 72% of the variance.  
+
+<br>
+ 
+**Examine the Loadings, Scores, and the biplot**
+
+Loadings -- weight of each variable on the PCs, i.e., the correlation of each variable (e.g., access_electricity) with each PC. Appear as vectors in the biplot, with magnitude and direction. 
+
+Scores -- the projections of variables on the PCs.  Coordinates of each original observation (country-year) in the PC space.
+
+Biplot -- scatterplot of scores of observations and loadings of variables in PC1-PC2 space. Each point represents an observation.
+
+```{r}
+
+training_loadings <- as.data.frame(training_11_24_pca$rotation)  # Loadings or rotation matrix - weights of the variables in the PCs.
+
+training_scores <- as.data.frame(training_11_24_pca$x)   # Scores - or coordinates of each observation in the PC space.
+
+training_loadings
+head (training_scores, 10)
+
+
+```
+**Conclusion from the loadings**
+
+I will only analyze the first two components here. After looking at the biplots later in the report, I will analyze the top 5 components.
+
+PC1 has important contributions from several variables, as opposed to one or two dominant ones. Loadings above .28: gov_health_expenditure, gni_capita, gdp_person_employed, innovation_score; loadings above .26:  happiness_score, internet_use, life_expectancy_birth, RD_expenditure, RD_researchers. This principal component captures the balance of scientific, economic, and social strengths of countries, essential for innovation capacity. This breath of coverage is reflected by its high eigenvalue.
+
+PC2 has fewer dominant contributions, which are all negative and below -.44: adjusted_national_income, GDP, patent applications, scientific publications. Much less dominant contributions, all positive, and above 0.10: completed_upper_second_educ, foreign direct investment, gdp_person_employed, internet use, happiness score. This principal component captures scientific and economic strengths of countries better than PC1, counteracted to a minor extent by social factors, such as happiness, or external influences, such as foreign direct investment.
+
+The contributions of each variable to the various PCs show interesting features: for example access_electricity contributes mostly to PC3, innovation_score mostly to PC19, happiness_score mostly to PC16. But no PC is dominated by a single variable, a sign of some degree of collinearity. 
+
+The relationships can be better understood by examing the biplots. We'll focus only on PC1-PC2 biplots.
+
+
+```{r}
+#  biplot (training_11_24_pca, c(1,2))   # biplot of scores and variable loadings in PC1, PC2
+
+```
+
+<br>
+The biplot() function yields an unclear picture for 23 variables.
+
+
+I searched for an alternative. The function fviz_pca_biplot from library  factoextra seems a little clearer.
+
+
+
+```{r}
+
+fviz_pca_biplot(
+  training_11_24_pca, geom.ind = "point", col.ind =  "lightgreen", col.var = "black",
+  repel = TRUE, arrowsize = 0.7)
+
+```
+<br>
+
+I put some color correlated with length of vector, ie magnitude or importance of variable
+
+```{r}
+
+
+fviz_pca_biplot(
+  training_11_24_pca,
+  geom.ind = "point", col.ind = "orange", label = "var", labelsize = 3,  arrowsize = 0.7,
+  col.var = "contrib", gradient.cols = c("blue", "red"), palette = "Dark2", repel = TRUE,
+  title = "Country/year scores in PCA Space")
+
+```
+
+
+<br>
+
+The biplot shows important outliers in the 4th quadrant.  To identify those country-years, we'll group by country (code), get the mean scores per country, and do a ggplot to label the countries.
+
+Above we also see 5 clusters of observations: 
+
+1: PC1<0 & PC2>=-2.5, 
+
+2: PC1<0 & PC2<-2.5, 
+
+3: PC1>=0 & PC1<=2.5; 
+
+4: PC1>2.5 & PC2>0; 
+
+5: PC1>2.5 & PC2<=0; 
+
+let's color those clusters.
+
+Let's consider only the first 5 PCs, following the earlier conclusions from the Spree plot and Kaiser criterion.
+
+```{r}
+
+training_scores_5 <- training_scores[,1:5] 
+training_scores_5$code <- training_11_24$code   # restore the country code
+training_scores_5_country <- training_scores_5  |> group_by(code) |>
+  summarize(across(starts_with("PC"), \(x) mean(x, na.rm = TRUE)))   # average scores of countries over 2011-2024 period
+training_scores_5_country <- training_scores_5_country |> 
+  mutate(  cluster = case_when(                             # define clusters 1, 2, 3,  4, and 5
+            PC1 < 0 & PC2 >= -2.5 ~ 1,
+            PC1 < 0 & PC2 < -2.5  ~ 2,
+            PC1 >= 0 & PC1 <= 2.5 ~ 3,
+            PC1 > 2.5 & PC2 >   0 ~ 4,
+            PC1 > 2.5 & PC2 <= 0  ~ 5
+         ))
+ggplot(training_scores_5_country, aes(x = PC1, y = PC2, label=code, color = cluster)) +
+  geom_point(size = 3) +
+  geom_text_repel(size = 3) +
+  theme_minimal(base_size = 14) +
+  labs(title = "Country average scores in PC1-PC2 space",
+       subtitle = "",
+       x = "PC1", y = "PC2")
+
+
+
+
+```
+
+
+<br>
+
+Go back to the unclustered data to spread out the scores over the years.  As stated above, PC2 reflects economic and technological strength (and its dominant loadings are negative) so this will highlight the most economically and technologically dominant countries-years.
+
+
+```{r}
+
+
+ggplot(training_11_24, aes(x=training_11_24_pca$x[,1], y=training_11_24_pca$x[,2], label = code)) +
+  geom_point() + geom_text_repel() + theme_minimal()
+
+```
+
+
+<br>
+
+**Conclusions from the biplots**
+
+From the biplots we see that some of the variables have strong loadings, greater than 0.25, on some of the PCs. Those that have strong loadings are worth discussing.
+
+We  qualitatively analyze the biplots to derive an interpretation of the meaning of each PC. Long vector identify the leading variables. Parallel vectors indicate correlation between variables.
+
+16 of the variables contribute moderately to significantly to +PC1 and have small positive or slightly negative PC2 (their vectors are almost parallel to PC1, showing some collinearity); as stated above, those variables qualify scientific productivity factors: RD expenditure, GNI,  innovation score, high-tech manufacturing, etc., as well as social factors: access to electricity, completed secondary education, life expectancy, etc.
+
+4 of the variables in the 4th quadrant contribute equally strongly to +PC1 and very strongly to -PC2 (negative effect with vectors pointing down in the 4th quadrant): GDP, adjusted national income, patent applications and scientific publications. It is interesting to note that the points (scores) corresponding to the USA and China determine the magnitude and directions of those vectors. This quadrant of the biplot contains the group of countries-years that represents the most advanced economies and technological leaders.
+
+2 of the variables point in the +PC1 and +PC2 directions (first quadrant) but are relatively weak: gov. expenditure in education, and foreign direct investments.
+
+1 of the weak variables in the second quadrant (-PC1 +PC2 direction) is: unemployed with advanced education.
+
+
+<br>
+
+**Major contributions from each variable**
+
+The largest contributions of each variable to each PC can be a little better visualized with a heatmap.
+
+```{r}
+training_loadings_long <- training_loadings |> # loadings of each variable to each PC
+  rownames_to_column("variable") |>
+  pivot_longer(-variable, names_to = "PC", values_to = "value")
+
+ggplot(training_loadings_long, aes(x = fct_inorder(PC), y = variable, fill = value)) +
+  geom_tile() +
+ scale_fill_gradient2(low = "red", mid= "lightyellow", high = "darkblue", midpoint= 0) +
+    theme_minimal(base_size = 10) +
+  theme(
+    axis.text.x = element_text(angle=90, hjust=1),
+    axis.text.y = element_text(size=7)
+  ) +
+  labs(title="Variable Contributions to the PCs (Loadings)",
+       fill="R²")
+
+```
+<br>
+**Conclusions from the heatmap**
+
+Again we can see that PC1 receives modest contributions from several variables, capturing the balance of scientific, societal, and economic strengths of countries. More specific analysis is provided in the next section.
+
+PC2 is more focused on scientific measures and economic power.
+
+PC3 reflects societal variables mainly.
+
+PC4 is strongly influenced by ICT exports and social support.
+
+PC5 is strongly influenced by foreign direct investments, high-tech exports and societal loads. 
+
+The heatmap also shows that the contributions above 45% are: ict_service_exports to PC4, foreign_direct_investment to PC5, gov_educational_expenses to PC6, completed_upper_secondary_educ to PC11, life_expectancy_birth to PC18, gov_health_expenditure to PC20, GNI_capita to PC21 and scientific_publications to PC23. 
+
+
+**Final conclusions on the meaning of each PC:**
+
+**PC1** -- Technological, economic and social capital of nations.  THIS is the main topic of this project, and PC1 captures most of it.
+
+Important variables for PC1 and their loadings:
+
+---Scientific/technological:   
+  
+  Innovation score, .29 
+  
+  Researchers in R&D, .27
+                              
+  RD expenditures, .26
+                              
+  High-Tech manufacturing, .24
+  
+---Social advancement: 
+
+  Life expectancy, .27
+
+  Completion of secondary education, .22
+
+  Internet use, .27
+
+  Access to electricity, .20
+          
+---Individual wealth: 
+
+  GNI/capita, .29
+  
+  GDP/worker, .28
+
+**Meaning of PC1**: indicates degree of economic, scientific, technological, and societal access. Countries-years with high PC1 have high GDP per capita, excellent education, high level of innovation, and high scientific productivity and technological impact. Examples are western European, north American and Asean countries.
+
+
+**PC2** -- Contrast between Size of the economy and scientific/technological output. 
+
+All of the important variables for PC2 have negative loadings, decreasing PC2.
+
+Scientific publications, -.49
+
+Patent applications, -.46
+
+GDP, -.49
+
+Adjusted national income, -.45
+
+Relatively minor variables that increase PC2 are:
+
+Internet use, and Unemployed with advanced education.
+
+**Meaning of PC2**: contrasts countries-years according to economic size and scientific/technological output.  For example, distinguishes Switzerland from USA, both with high technological output, but of drastically different economic size. Large negative PC2 identifies the largest economies with the leading technologies, like USA and China. 
+
+**PC3** -- Contrast between Social promotion and technological promotion.
+
+Important variables are:
+
+Access to electricity, .49
+
+Unemployed with advanced education, .45
+
+Life expectancy, .28
+
+Internet use, .23
+
+Government expenditure in education, -.32
+
+Foreign direct investment, -.21
+
+RD investment, -.17
+
+**Meaning of PC3**: contrasts countries-years with strong social polices (positive loadings) from those with strong promotion for technology (negative loadings)
+
+
+**PC4** -- Contrast between Technical services and high-energy production
+
+Important variables are:
+
+ICT service exports, -.66
+
+Unemployed with advanced education, -.47
+
+Government expenditure in education, -.23
+
+Foreign direct investment, .23
+
+Power consumption, .22
+
+**Meaning of PC4**: captures the difference between countries-years that export much information technologies (negative loadings) from those that invest in heavy industry (positive loadings). Examples are eastern European, Russia, and some east Asian countries.
+
+**PC5** -- Direct foreign investment versus manufacturing
+
+Important variables are:
+
+Foreign direct investment, .71
+
+Unemployed with advanced education, -.45
+
+High-tech exports, -.35
+
+**Meaning of PC5**: captures the emphasis between countries-years of strong foreign direct investment (positive) against those focused on exports of high-tech products (negative). Examples exist in some of the smaller economies and developing countries like Brazil and Taiwan.
+
+
+<br>
+
+## h. TESTING the PCA model with the testing set
+
+
+Now let's transform the testing set using the predict() function with the same model training_11_24_pca derived from the training set, and project the testing set on the same PCs.
+
+```{r}
+
+training_11_24_5 <- as.data.frame(training_11_24_pca$x[ , 1:5])   # subset of training scores on 5 PCs
+pred_testing_11_24 <-  as.data.frame(predict(training_11_24_pca, newdata=testing_11_24_scaled))   # predict scores from the testing set
+pred_testing_11_24_5 <-  as.data.frame(pred_testing_11_24[ , 1:5]) # subset of testing scores on 5 PCs
+
+```
+
+<br>
+Now let's compare PC1 and PC2 for both training model and testing predictions.
+
+
+```{r}
+
+training_11_24_5$id <- "Training"
+pred_testing_11_24_5$id <- "Testing"
+bound_sets <- rbind(training_11_24_5, pred_testing_11_24_5)
+ggplot(bound_sets, aes(x = PC1, y = PC2, color = id)) + geom_point(alpha = 0.5) + labs(title = "Comparing Training and Testing Structures")  + scale_color_brewer(palette = "Dark2")
+
+```
+
+
+<br>
+
+**Conclusion**
+
+The testing data (in PC1-PC2 space) shows perfect alignment with the training data, which visually indicates that the PC model is generalizable to data not seen before in training.
+
+
+<br>
+
+## i. Further Statistical Analysis
+
+**USING the 5 Principal Component model to predict innovation with linear regression**
+
+Having qualitatively verified the quality of the reduced (5 Principal Component) model, we will proceed to use it to predict innovation_score with multilinear regression and get a statistical measure of goodness of fit. 
+
+
+```{r}
+
+training_scores$code <- training_11_24$code                                     #restore code as separate var
+training_scores$year <- training_11_24$year                                     #restore year as separate var
+training_11_24_scaled <- as.data.frame(training_11_24_scaled)                   #make training_11_24_scaled a dataframe
+training_scores$innovation_score <- training_11_24_scaled$innovation_score      #restore innovation score as separate var
+training_scores$happiness_score <- training_11_24_scaled$happiness_score        #restore happiness score as separate var
+
+training_11_24_regress <- lm(innovation_score ~ PC1 + PC2 + PC3 + PC4 + PC5,    #linear regression
+            data = training_scores)
+
+summary(training_11_24_regress)
+
+
+```
+
+
+<br>
+**Conclusion**
+
+The linear model on the PC1-PC5 space is statistically significant as its p-value is close to 0 and the Adjusted R-squared is 82.7% and 
+F-statistic is large.
+
+The coefficients for PC1, PC3, and PC4 are statistically significant with p-value well under .05.  The coefficient for PC2 is borderline, within 94% confidence. The one for PC5 is not significant but PC5 contribution to innovation_score is an order of magnitude smaller than the other PCs. PC1 and PC2 increase innovation_score, while PC3-PC5 decrease it. An interpretation of this is given below, after specifically looking at the role of happiness_score.
+
+<br>
+
+**ADDING happiness to the 5 Principal Component model to predict innovation**
+
+We will answer the initial question in this project whether happiness has anything to do with innovation.  To do so, we'll add specifically happiness_score as independent variable in the model and see what it does to the regression. I note that the happiness_score variable is almost orthogonal to PC1-PC5, contributing a fraction of 7% to PC1 (obtained from the loadings-squared matrix), 1% to PC2, 0% to PC3, 1% to PC4 and 3% to PC5. 
+
+```{r}
+
+training_11_24_regress_happy <- 
+  lm (innovation_score ~ PC1 + PC2 + PC3 + PC4 + PC5 + happiness_score,          #linear regression
+    data = training_scores)
+
+summary(training_11_24_regress_happy)
+
+
+
+
+```
+<br>
+
+**Conclusion**
+
+The linear model with 5 PCs plus happiness_score is statistically significant with p-value close to zero and Adjusted R-Square of 83.1%, slightly larger than the 5 PC model. Importantly, all of the regression coefficients are statistically significant, with p-values well under .05 in most cases, except PC5. PC1 and PC2 increase innovation_score, with PC1 having the largest contribution to innovation. PC3-PC5 and happiness_score decrease innovation score.
+
+<br>
+**REMOVING innovation score from PCA to leave it as an outcome variable for regression**
+
+Method 2: we will briefly re-run the PCA but on a dataset that does not include innovation_score, so that we can leave it purely as an outcome variable for regression.  We will do PCA on the other 22 variables (World Bank indicators and happiness_score).
+
+```{r}
+training_11_24_scaled <- as.data.frame(training_11_24_scaled)
+training_11_24_scaled_no_is <- training_11_24_scaled |> select (-innovation_score)   #remove innovation_score
+training_11_24_no_is_pca <- prcomp(training_11_24_scaled_no_is, center = TRUE, scale. = TRUE)    # do PCA on 22 vars
+
+plot(training_11_24_no_is_pca, type="lines")   # this is the Scree plot, with an apparent "shoulder" at PC 3 to 4.
+summary (training_11_24_no_is_pca)
+fviz_pca_biplot(
+  training_11_24_no_is_pca,
+  geom.ind = "point", col.ind = "orange", label = "var", labelsize = 3,  arrowsize = 0.7,
+  col.var = "contrib", gradient.cols = c("blue", "red"), palette = "Dark2", repel = TRUE,
+  title = "Country/year scores in PCA Space")
+```
+<br>
+The results for this PCA with 22 variables in comparison with the previous PCA with 23 variables is very similar both in the loadings or rotation matrix (magnitude and directions of variable vectors) and scores (points for countries-years in the PC1-PC2 space).  Spree curve and Kaiser criterion indicate that PC1:PC5 capture 71% of the variance and are sufficient for a reduced model.  The conclusion is that the previous analysis of the meaning of the PCs still applies for this PCA.
+
+Now let's add the columns for innovation_score and happiness_score to the new scores, and perform a linear regression on the reduced model (PC1-PC5 plus happiness_score) to predict innovation_score.
+
+```{r}
+training_scores_no_is <- as.data.frame(training_11_24_no_is_pca$x)              #gather the scores from the new PCA
+copy_cat  <-  c("innovation_score","happiness_score")                           # 2 cols from training_11_24_scaled
+training_scores_no_is[, copy_cat] <- training_11_24_scaled[, copy_cat]          #add them to new training_scores_no_is
+
+```
+
+<br>
+
+Now re-do the linear regression with the independent variables PC1-PC5 derived from the new PCA, plus happiness_score.
+
+```{r}
+
+training_11_24_regress_happy_2 <- 
+  lm (innovation_score ~ PC1 + PC2 + PC3 + PC4 + PC5 + 
+        I(happiness_score^2),          #linear regression
+    data = training_scores_no_is)
+
+summary(training_11_24_regress_happy_2)
+
+
+```
+<br>
+
+**Conclusion**
+The new model with the set of 5 PCs derived from a dataset that did not include innovation_score performs well, with an adjusted R-square of 79%, lower than the previous model (83%), but acceptable. The p-value for the new model is close to zero and F-statistic is large. The PC1-PC4 and happiness_score coefficients are below .05, and are statistically significant.  PC1 and PC2 are positive, and PC3-PC5 are negative, as in the previous model.   
+
+
+<br>
+THIS WAS NOT PART OF THE PROJECT SUBMITTED
+
+**REMOVING innovation AND happiness scores from PCA to leave as outcome and predictor variables for regression**
+
+Method 3: we will briefly re-run the PCA but on a dataset that does not include innovation_score nor happiness_score, so that we can leave it purely as outcome and predictor variable for regression.  We will do PCA on the other 21 variables (World Bank indicators and happiness_score).
+
+```{r}
+training_11_24_scaled <- as.data.frame(training_11_24_scaled)
+training_11_24_scaled_no_is_no_hs<- training_11_24_scaled |> select (-innovation_score, -happiness_score)   #remove innovation_score and happiness_score
+training_11_24_no_is_no_hs_pca <- prcomp(training_11_24_scaled_no_is_no_hs, center = TRUE, scale. = TRUE)    # do PCA on 21 vars
+
+plot(training_11_24_no_is_no_hs_pca, type="lines")   # this is the Scree plot, with an apparent "shoulder" at PC 3 to 4.
+summary (training_11_24_no_is_no_hs_pca)
+fviz_pca_biplot(
+  training_11_24_no_is_no_hs_pca,
+  geom.ind = "point", col.ind = "orange", label = "var", labelsize = 3,  arrowsize = 0.7,
+  col.var = "contrib", gradient.cols = c("blue", "red"), palette = "Dark2", repel = TRUE,
+  title = "Country/year scores in PCA Space")
+```
+<br>
+The results for this PCA with 21 variables in comparison with the previous PCA with 23 variables is very similar both in the loadings or rotation matrix (magnitude and directions of variable vectors) and scores (points for countries-years in the PC1-PC2 space).  Spree curve and Kaiser criterion indicate that PC1:PC5 capture 71% of the variance and are sufficient for a reduced model.  The conclusion is that the previous analysis of the meaning of the PCs still applies for this PCA.
+
+Now let's add the columns for innovation_score and happiness_score to the new scores, and perform a linear regression on the reduced model (PC1-PC5 plus happiness_score) to predict innovation_score.
+
+```{r}
+training_scores_no_is_no_hs <- as.data.frame(training_11_24_no_is_no_hs_pca$x)              #gather the scores from the new PCA
+copy_cat  <-  c("innovation_score","happiness_score")                           # 2 cols from training_11_24_scaled
+training_scores_no_is_no_hs[, copy_cat] <- training_11_24_scaled[, copy_cat]          #add them to new training_scores_no_is
+
+```
+
+<br>
+
+Now re-do the linear regression with the independent variables PC1-PC5 derived from the new PCA, plus happiness_score.
+
+```{r}
+
+training_11_24_regress_happy_3 <- 
+  lm (innovation_score ~ PC1 + PC2 + PC3 + PC4 + PC5 +
+       poly(happiness_score, 2, raw=TRUE),          #linear regression
+    data = training_scores_no_is_no_hs)
+
+summary(training_11_24_regress_happy_3)
+
+
+```
+<br>
+
+**Conclusion**
+Removing happiness_score from the principal components leads to a statistically not significant coefficient and a change in sign to positive. Its magnitude also decreases by a factor of 2.  More work is required. Linear regression is not appropriate when seeking a curve that goes over a maximum in innovation as f(happiness). I tried quadratic happiness but it doesn't work either.
+
+<br>
+plots of predictd vs raw innovation
+at two values of PC1, low and high, and zero PC2:PC5. Below I'm using the regress_happy_2 model derived with no_is.   The model derived from no_is_no_hs has positive slope for happiness, so it doesn't agree with the evidence.
+
+```{r}
+#let us plot 
+
+ggplot(training_scores_no_is_no_hs, aes(x = happiness_score, y = innovation_score)) +
+  geom_point(alpha = 0.4, color = "gray40") +
+  # Add the quadratic regression line
+  geom_smooth(method = "lm", 
+              formula = y ~ x + I(x^2), 
+              color = "darkred", 
+              linewidth = 1.5, 
+              se = TRUE) +
+  labs(title = "Quadratic Relationship: Innovation vs. Happiness",
+       subtitle = "Model captures intermediate happiness levels",
+       x = "Happiness Score",
+       y = "Innovation Score") +
+  theme_minimal()
+
+score_range <- seq(
+  min(training_scores_no_is_no_hs$happiness_score, na.rm = TRUE), 
+  max(training_scores_no_is_no_hs$happiness_score, na.rm = TRUE), 
+  length.out = 100 # Create 100 points for a smooth line
+)
+PC2_fixed <- 0
+PC3_fixed <- 0
+PC4_fixed <- 0
+PC5_fixed <- 0
+PC1_case_High <- 5     #developed countries
+PC1_case_Low <- -3     #developing countries
+case_labels <- c(
+  paste0("PC1 = ", PC1_case_High), 
+  paste0("PC1 = ", PC1_case_Low)
+)
+
+new_data_high_pc1 <- data.frame(
+  happiness_score = score_range,
+  PC1 = PC1_case_High,
+  PC2 = PC2_fixed,
+  PC3 = PC2_fixed,
+  PC4 = PC2_fixed,
+  PC5 = PC2_fixed,
+  Case = case_labels[1]
+)
+
+new_data_low_pc1 <- data.frame(
+  happiness_score = score_range,
+  PC1 = PC1_case_Low,
+  PC2 = PC2_fixed,
+  PC3 = PC2_fixed,
+  PC4 = PC2_fixed,
+  PC5 = PC2_fixed,
+  Case = case_labels[2]
+)
+prediction_data <- rbind(new_data_high_pc1, new_data_low_pc1)
+
+prediction_data$Predicted_Innovation <- predict(
+  training_11_24_regress_happy_3, 
+  newdata = prediction_data
+)
+color_values <- c("#E31A1C", "#1F78B4")
+names(color_values) <- case_labels
+line_colors <- color_values
+actual_point_color <- "gray40"
+
+plot_predicted_with_actual <- ggplot(aes(x = happiness_score), data = training_scores_no_is_no_hs) +
+geom_point(
+    aes(y = innovation_score), 
+    color = actual_point_color,
+    alpha = 0.4, 
+    size = 2
+  )  +
+geom_line(
+    data = prediction_data,
+    aes(y = Predicted_Innovation, color = Case),
+    linewidth = 1.5
+  ) +
+ scale_color_manual(
+    name = paste0("Predicted Trend"),
+    values = line_colors
+  ) +
+labs(
+    title = "Effect of Happiness on Innovation Score Moderated by PC1",
+    subtitle = "Predicted trends are calculated at fixed PC2:PC5=0",
+    x = "Happiness Score",
+    y = "Innovation Score (Actual & Predicted)"
+  ) +
+  theme_minimal(base_size = 14)
+
+plot_predicted_with_actual
+
+
+```
+
+<br>
+
+**Conclusion**
+The predictions are not satisfactory. The red curve should be convex to show that developed countries do not benefit from happiness.
+
+<br>
+produce a table and see what it shows
+
+```{r}
+country_summary <- training_scores %>%
+  group_by(code) %>%
+  summarize(
+    happiness_score = mean(happiness_score, na.rm = TRUE),
+    innovation_score = mean(innovation_score, na.rm = TRUE)) %>%
+  
+  arrange(code)|>
+  mutate(ID=row_number())
+happiness_ranked <- country_summary %>%
+  arrange(desc(happiness_score)) %>%
+  select(code_happiness = code, happiness_score)
+
+innovation_ranked <- country_summary %>%
+  arrange(desc(innovation_score)) %>%
+  select(innovation_score, country_code_innovation = code)
+
+ranked_table <- bind_cols(happiness_ranked, innovation_ranked)
+ranked_table
+
+
+ggplot(country_summary, aes(x = happiness_score, y = innovation_score, label = code)) +
+  
+  # Add the points
+  geom_point(color = "steelblue", size = 3) +
+  
+  # Add non-overlapping labels
+  geom_text_repel(
+    size = 3,                 # Font size of labels
+    box.padding = 0.5,        # Distance around points
+    point.padding = 0.3,      # Distance from the point itself
+    max.overlaps = Inf,       # Force R to try to show all labels
+    segment.color = "grey50"  # Color of the line connecting label to point
+  ) +
+  geom_smooth(
+   # method = "lm", 
+  #  formula = y ~ poly(x, 2), # Fits the 'increase then decrease' shape
+  #  color = "darkred", 
+  #  fill = "lightpink",        # Confidence interval color
+  #  alpha = 0.2
+    method = "loess", 
+    span = 0.75,       # Controls 'wiggliness' (higher = smoother)
+    color = "blue", 
+    se = TRUE          # Show shaded confidence interval
+  ) +
+  
+  # Formatting
+  labs(
+    title = "Country-Level Innovation vs. Happiness",
+    subtitle = "Averaged scores ranked by Innovation",
+    x = "Average Happiness Score",
+    y = "Average Innovation Score"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+caption_text <- paste(country_summary$ID, country_summary$country_code, sep = ": ", collapse = ", ")
+
+# Wrap the caption text so it doesn't run off the screen
+wrapped_caption <- paste0("Country Mapping:\n", 
+                          paste(strwrap(caption_text, width = 110), collapse = "\n"))
+
+
+ggplot(country_summary, aes(x = happiness_score, y = innovation_score)) +
+  
+  # A. Add the Best Fit Curve (Quadratic)
+  geom_smooth(
+    method = "lm", 
+    formula = y ~ poly(x, 2), 
+    color = "darkred", 
+    fill = "lightpink", 
+    alpha = 0.2
+  ) +
+  
+  # B. Add the "Numbered Circles"
+  # shape 21 is a circle with a border and a fill
+  geom_point(
+    shape = 21, 
+    fill = "white", 
+    color = "steelblue", 
+    size = 7,         # Increase size to fit the numbers
+    stroke = 1.2
+  ) +
+  
+  # C. Place the ID number inside the circle
+  geom_text(
+    aes(label = ID), 
+    size = 3, 
+    fontface = "bold"
+  ) +
+  
+  # D. Labels and Formatting
+  labs(
+    title = "Innovation vs. Happiness by Country",
+    subtitle = "Numbered points correspond to country codes in the caption",
+    x = "Average Happiness Score",
+    y = "Average Innovation Score",
+    caption = wrapped_caption
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.caption = element_text(hjust = 0, size = 8, family = "mono"), # Monospace helps alignment
+    plot.margin = margin(10, 10, 40, 10) # Add space at bottom for the long caption
+  )
+
+```
+THIS PART ABOVE WAS NOT SUBMITTED.
+
+
+<br>
+THE FOLLOWING WAS PART OF THE SUBMITTED FINAL REPORT
+
+## j. Discussion and General Conclusions
+
+We started with a general question of what socioeconomic and scientific-technological variables have influenced the innovation of countries over the period 2011-2024. A special question has been whether degree of happiness of nations influence their level of innovation. 
+
+We have carried out Principal Component Analysis for 23 variables and have identified 5 principal components as sufficient to statistically account for 72% of the variance. We then interpreted the practical meaning of each of the 5 PCs in the context of the data. The 5 orthogonal vectors PC1-PC5 plus happiness_score have then been used in a multilinear regression model to predict innovation_score resulting in an excellent goodness of fit (Adj R-squared= 83%) and statistically significant coefficients. We also did PCA on 22 variables, removing innovation_score to leave it as a pure dependent variable for linear regression. The reduced model of the new PC1-PC5 plus happiness_score still has acceptable goodness of fit (Adj R-squared= 79%) and statistically significant coefficients. The signs of the regression coefficients are very important and they led us to the following general conclusions.
+
+Since PC1 represents the scientific, technological and societal strengths of countries, the positive coefficient means that countries with more of those assets in good balance will be more innovative in general. PC2, on the other hand, distinguishes large rich countries (like USA) from small rich ones (like Switzerland). PC2 is more negative for large countries than small ones, thus the positive regression coefficient says that small rich countries tend to be more innovative than large rich countries. PC3 distinguishes emphasis on societal investment (positive) versus technological investment (negative). The negative regression coefficient says that countries that emphasize technological investments tend to be more innovative than those that invest heavily in social gains.  PC4 distinguishes emphasis on ICT exports (negative) versus heavy industrial development (positive). Thus the negative regression coefficient says that countries that emphasize ICT exports versus heavy industry are more innovative. PC5 distinguishes emphasis on direct foreign investment (positive) versus high-tech exports (negative), thus the negative regression coefficient says that countries that are more focused on high-tech exports than in attracting foreign investment tend to be more innovative.
+
+This all makes sense and agrees with our perception. How about happiness_score?
+The non-negligible regression coefficient and the low p-value says that it is an important and statistically significant variable. But why is the regression coefficient negative? My initial EDA showed that there is an overall positive correlation between innovation and happiness. However, the model appears to say that countries that increase their happiness tend to become less innovative!
+
+**Rationalization**: overall, of course, countries that are powerful and invest heavily in industrial and societal development, tend to be happy and also innovative, as shown by the innovation dependence on PC1-PC5, which are the variables that contribute the most to innovation_score. HOWEVER, countries that are too happy and satisfied with their status quo tend to relax and become less productive, scientifically and technologically speaking. Thus, on one extreme, social unhapinness leads to low productivity, lack of motivation and consequently, poor innovation potential. On the other extreme, a large degree of happiness leads to contempt and lack of competitive goals. But there is a sweet spot. It does seem that for countries to become highly innovative, not only do they need the scientific, economic and societal capabilities, but they also need international competition, some level of struggle and anxiety, and thus a little bit of unhapinness.  
+
+
+## k. Obstacles
+
+The main challenge was to assemble the database in order to contain the relevant information I needed. I had to resort to three sources, World Bank, WIPO (World Intellectual Property Office) and Gallup World Poll. A major challenge was the NA information once the three sources were bound, and had to resort to significant cleaning tasks.   The modeling itself demanded much time studying from several data books (provided in the class references) on how to carry out and interpret PCA, and then developing a good understanding of the meaning of the principal components in my data. The actual coding was standard. With more time I would do more graphics.
+
+## l. Future steps
+
+I ran out of time to interpret the implications of the 5-PC model. I think there are rich conclusions to be derived not only on the subject of this report, innovation against happiness, but beyond it. I could examine specific countries and groups of countries classified in various ways. An important aspect that could be explored is to compare the predicted innovation_score from the last regression analysis done, with the actual innovation_score (GII from WIPO) for all  countries. Then to calculate something I would call "innovation potential"= predicted-actual. Predictions are based on socioeconomic and technical capabilities, so countries with positive "innovation potential" have headspace to grow (are underperforming), while countries with negative "innovation potential" have exceeded their capacity (are overperforming). I wonder which are overperformers and which are underperformers, how have they progressed over the years, and why. Next time. This type of analysis could help strategists involved with promoting international scientific and technological advancement.  
+
+
+## m. References
+
+. Class notes
+
+. H. Wickham, et al., R for Data Science, 2nd Ed., https://r4ds.hadley.nz/ (2023)
+
+. WIPO,Global Innovation Index, Nov. 2025 Report, (https://www.wipo.int/en/web/global-innovation-index), Data Explorer (https://www.wipo.int/gii-ranking/en/), accessed Nov. 2025
+
+.  Nilsson, AH, et al., Scientific Reports 14, Feb. 1, 2024, The Cantril Ladder elicits thoughts about power and wealth (https://www.nature.com/articles/s41598-024-52939-y), accessed Nov. 2025
+
+. What is Cantril’s Ladder?, Scioto Analysis, Feb. 9, 2024 (https://www.sciotoanalysis.com/news/2024/2/9/what-is-cantrils-ladder), accessed Nov. 2025
+
+. Country codes and world classification (https://unstats.un.org/unsd/methodology/m49/overview/), accessed in Dec. 2025.
+
+
+
+## n. Published
+
+https://rpubs.com/rmiranda/1380294
+
