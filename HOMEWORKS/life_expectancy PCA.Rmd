@@ -1,0 +1,235 @@
+---
+title: "life_expectancy PCA"
+author: "Mais Alraee"
+output: html_document
+---
+
+**Introduction**
+
+This activity aims to explore and analyze the relationship between a country’s development level and its health outcomes using Principal Component Analysis (PCA). The focus is on understanding how various health indicators (such as mortality rates, life expectancy, and disease prevalence) vary across countries with different stages of development.
+
+**About the dataset**
+
+The Global Health Observatory (GHO) data repository under World Health Organization (WHO) keeps track of the health status as well as many other related factors for all countries. The dataset related to life expectancy, health factors for 193 countries has been collected from the same WHO data repository website and its corresponding economic data was collected from United Nation website.
+
+You can read more about the dataset in here: https://www.kaggle.com/datasets/kumarajarshi/life-expectancy-who?resource=download
+
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+
+ #setwd("C:/Users/mayss/Desktop/Data 101/Data 101 - Teaching/Week 11- Ethics/Fall 25")
+
+life_data<- read_csv("life_expectancy_who.csv")
+
+# Fix the columns' names
+names(life_data) <- tolower(names(life_data))  # Convert all column names to lowercase 
+
+# Replace spaces and slashes with underscores to improve readability 
+names(life_data) <- gsub(" ", "_", names(life_data))
+names(life_data) <- gsub("/", "_", names(life_data)) 
+```
+
+
+**Data Preparation:**
+
+The first step is to clean and filter the dataset to retain relevant variables. The code is set up, but you need to add other indicators that you believe can be relevant to this analysis.  We focus on numerical health and development indicators and remove any missing values.For PCA to work, your data must have no NAs.You can either drop rows with missing values (easy) or impute them (better if you want to preserve more data).
+
+
+
+```{r}
+sum(is.na(life_data))
+```
+
+So we impute by using the median
+
+```{r}
+# Clean & filter: keep only numeric columns + identifiers
+life_clean <- life_data |>
+  select(country, status, life_expectancy, bmi, 'under-five_deaths',
+         measles, hiv_aids, gdp) |>
+  mutate(across(where(is.numeric),
+                ~ ifelse(is.na(.x), median(.x, na.rm = TRUE), .x)))
+
+```
+
+
+
+
+
+**Principal Component Analysis (PCA) Setup:**
+
+Use PCA to reduce the dimensionality of the dataset while retaining as much variance as possible.
+
+Ensure that the dataset is scaled before performing PCA.
+
+Perform PCA on the numerical columns and extract the principal components (PC1 and PC2). What do the first two principal components explain about the data?
+
+```{r}
+
+# Step 1: Standardize data
+numeric_data <- life_clean |>
+  select(where(is.numeric)) |> 
+  scale()
+
+# Step 2 +3 : Find Directions of Maximum Variation and rank them
+pca_fit <- prcomp(numeric_data)
+
+pca_fit
+
+```
+
+
+
+`Standard deviations (1, .., p=8):
+[1] 1.6241768 1.2159794 1.0457050 0.9690621 0.8241050 0.7020642 0.6662439 0.4847055`
+
+These are the SDs of each principal component (PC1–PC8) after PCA on standardized variables. Squaring them gives the variance explained by each PC. Roughly:
+
+PC	% variance explained (approx)
+PC1	33%
+PC2	18%
+PC3	14%
+PC4	12%
+PC5	8%
+PC6	6%
+PC7	6%
+PC8	3%
+
+PC1 and PC2 together ≈ 51% of the variation.
+
+PC1 through PC3 ≈ 65% and so on
+
+Those first few PCs are the most informative.
+
+1. Now look at PC1 (first component): This component explains the largest variation. It has high positive weights for life expectancy and GDP, and negative weights for mortality, HIV, and infant deaths. So PC1 looks like a “better health & wealth” dimension.
+
+This suggests PC1 represents a development/health gradient (developed vs. developing countries).
+
+2. PC2 (second component): It explains the next biggest variation. It has large negative weights for infant deaths and measles, and positive weights for adult mortality and HIV.
+
+This shows PC2 separates child health problems from adult health problems.
+
+**Visualize PCA Results:**
+
+PCA doesn’t know which countries are “developed” or “developing.” It only looks for patterns in the numbers. By creating a scatter plot and adding color for status, we can check if those patterns match what we already know.
+
+If developed and developing countries separate on the plot, it means PCA really captured the development/health gradient.If they mix together, then status doesn’t explain the variation as much.
+
+
+```{r warning=FALSE}
+library(broom)
+
+pca_fit |>
+  # Add PCs to the original dataset
+  augment(life_clean) |>
+  ggplot(aes(.fittedPC1, .fittedPC2)) +
+  geom_point(aes(color = status)) +  # Use status for coloring
+
+  # Add the PCA1 and PCA2 arrows
+  geom_segment(aes(x = -4.9, y = 0, xend = 5, yend = 0), 
+               arrow = arrow(type = "closed", length = unit(0.1, "inches")),
+               color = "black") +  # PC1 arrow
+  geom_segment(aes(x = 0, y = -2.5, xend = 0, yend = 4), 
+               arrow = arrow(type = "closed", length = unit(0.1, "inches")),
+               color = "black") +  # PC2 arrow
+
+  # Add text labels
+  geom_text(aes(x = 5, y = 0, label = "PC1"), 
+            vjust = -0.5, color = "black") +  
+
+  geom_text(aes(x = 0, y = 4, label = "PC2"), 
+            hjust = -0.5, color = "black") +  
+
+  # Customize the plot
+  xlab("PC1") +
+  ylab("PC2") +
+  theme_minimal()
+
+```
+
+
+Each dot is a country. Red = Developed countries Blue = Developing countries
+
+
+PC1 (horizontal axis) separates countries by overall health & wealth:
+
+Countries far right (high PC1) have high life expectancy, low adult/infant mortality, low HIV, low measles, and higher GDP  → These are mostly developed countries (red).
+
+Countries far left (low PC1) tend to have lower life expectancy, higher disease burden, lower GDP → Mostly developing countries (blue).
+
+So PC1 is basically a “development / health index.”
+
+
+
+PC2 (vertical axis) separates based on disease patterns:
+
+Countries higher on PC2 have certain disease patterns (like low measles, low infant deaths). Countries lower on PC2 have higher child mortality or outbreaks. It separates child health problems from adult health problems.
+
+PC2 is a “disease pattern differences” axis.
+
+
+**Create the Rotation Arrows:**
+
+
+```{r warning=FALSE}
+#Rotation Matrix
+
+arrow_style <- arrow(
+  angle = 20, length = grid::unit(8, "pt"),
+  ends = "first", type = "closed"
+)
+pca_fit |>
+  # extract rotation matrix
+  tidy(matrix = "rotation") |>
+  pivot_wider(
+    names_from = "PC", values_from = "value",
+    names_prefix = "PC"
+  ) |>
+  ggplot(aes(PC1, PC2)) +
+  geom_segment(
+    xend = 0, yend = 0,
+    arrow = arrow_style
+  ) +
+  geom_text(aes(label = column), hjust = 1) +
+  xlim(-1, 0.5) + ylim(-1, 0.7) + 
+  coord_fixed()+
+  theme_minimal()
+```
+
+**Summarize the findings of the PCA.**
+
+
+**What does PC1 show?**
+PC1 represents a gradient of development level—from developing to developed countries. High PC1 values indicate higher GDP, life expectancy, and healthcare investment, while low PC1 values are associated with poorer health outcomes and lower economic development.
+
+**What does PC2 show?**
+PC2 captures variation in the type of health challenges countries face. Negative PC2 values are associated with high child mortality and measles, whereas positive PC2 values reflect higher adult mortality and HIV prevalence.
+
+
+**What does the analysis reveal about the relationship between development level and health outcomes in different countries?**
+
+Developed countries cluster on the positive side of PC1, showing higher GDP, life expectancy, and health spending. Their PC2 values vary depending on adult health issues.
+
+Developing countries mostly fall on the negative side of PC1, linked to lower income and poorer health outcomes. Their PC2 values depend on whether child health problems (like infant deaths, measles) or adult health problems (like HIV, adult mortality) are more severe.
+
+The arrows show which health factors drive these patterns. For example, infant deaths and measles point in the negative direction, while HIV and adult mortality point in the positive direction and they overlap, meaning HIV strongly contributes to adult mortality.
+
+**How much variation is explained by PC1 and PC2?**
+
+```{r}
+pca_fit |>
+  tidy(matrix = "eigenvalues")
+```
+
+PC1 explains about 35% of the variation.
+
+PC2 explains about 18%.
+
+Together, PC1 + PC2 account for about 53% of the total variation in the dataset.
+
+This means that by looking at just the first two principal components, you can capture more than half of the important information in the data, making it easier to visualize and interpret.
+
+
+
