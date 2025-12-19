@@ -1,0 +1,922 @@
+---
+title: "PROJECT 2 - Impact of Patents on National Growth"
+name: "Raul Miranda"
+output: html_document
+date: "2025-11-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+Do the necessary library installations
+
+```{r}
+# install.packages("tidyverse", "data.table")
+
+
+    library(tidyverse)
+    library(data.table)
+    library(dplyr)
+    library(car)
+    library(patchwork)
+    library(corrplot)
+    library(RColorBrewer)
+```
+
+
+# Title: Impact of Patents on National Growth
+<br>
+
+## a. Introduction
+
+The primary question in this study is **how do patents applications relate to national economic growth?** In relation to that, **how do inceptives for scientific and technologic growth as measured by fraction of GDP invested in R&D impact further growth as measured by GDP?**  The underlying concept is that building and protecting intellectual property is a source of national impact and a foundation for future growth.
+
+We have seen a fast increase in patent filing over the last 3 decades and we would like to better understand which countries are promoting that growth and how it is affecting their economy.
+
+Patent production is enabled by supporting infrastructure that enables their development. Isolated and eccentric inventors of the past are no longer the primary source of innovative ideas. The working model is an economy that places emphasis on technical or technological innovation as a basis of national advancement for its people and well-being.  Such emphasis is evidenced by the support of a strong educational foundation that promotes creativity and independent thinking among its youngest citizens, the source of future inventors. But technical interest and education must be complemented with a powerful manufacturing and scientific infrastructure that allows inventors to discover where innovation is needed the most, and what's feasible and realizable in practice. Since the low-hanging fruit has already been collected, the current generation of inventors are aiming for technological marvels that seemed science fiction just a few years ago. Thus, from the practical inventions to facilitate daily human living, mostly mechanical and electrical in nature, inventors are now turning to sophisticated medical, pharmaceutical, and chemical solutions to prolong life; electronic and digital solutions to robotize routine tasks as well to achieve tasks not easily feasible for humans, or instruments and communication and manufacturing technology for the fast growing space industry. I mentioned two of the necessary legs to competitive patent production:  technical education, and manufacturing and scientific infrastructure.  The third leg is a favorable legal, regulatory and financial system that protects invention and makes it attractive and profitable.  In the past century, only a handful of countries had all three legs in place. Over the last 4 decades, however, more and more countries are reaching the state of development that enable them to enter the "race". 
+
+In this initial entry into this topic, I am aiming to start scoping the land of patents and see how they are influencing the economy of countries. One basic question is: **do countries that invest more in R&D produce more patents?**  I hope to answer that question here.  The second question is: **are more patents leading to more exports (or trade) for countries?** If I can collect sufficient data, I may be able to answer that here. **Is the growth of R&D in general impacting patent production?** On the basis of considerations raised in the previous paragraph, other questions are: is gender diversity playing a role in patent production? Are different patent sectors and types growing differently? The last question may lead to very valuable strategic guidance, but a more comprehensive dataset and much analysis time are needed, thus I don't expect to answer that question here.
+<br>
+
+## b. Source databases for this project
+
+The project required assembling a dataset with the necessary information by country and year, to answer the questions posed above: (1) tables of individual patent filings from USPTO,(2) tables with various indicators from World Bank: GDP, patent applications (total), R&D spending, exports, manufacturing, researchers, population, (3) tables from OurWorldinData on scientific publications, on trade, and country classification by income, (4) table from IBAN to convert country codes from Alpha-2 to Alpha-3 (ISO 3166 international standard.)
+
+**USPTO** (US Patent and Trademark Office)
+
+PatentsView (annualized tables): https://patentsview.org/data/annualized; downloaded 10 tables 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020 and 2024.
+
+**World Bank** (World Development Indicators): 
+
+GDP(current US$): https://data.worldbank.org/indicator/NY.GDP.MKTP.CD
+
+Patent applications (residents): https://data.worldbank.org/indicator/IP.PAT.RESD
+
+Exports of goods and services (%GDP): https://data.worldbank.org/indicator/NE.EXP.GNFS.ZS
+
+Manufacturing, value added (%GDP): https://data.worldbank.org/indicator/NV.IND.MANF.ZS
+
+Population (total): https://data.worldbank.org/indicator/SP.POP.TOTL
+
+Researchers in R&D (per million population): https://data.worldbank.org/indicator/SP.POP.SCIE.RD.P6
+
+Research and Development expenditure (%GDP): https://data.worldbank.org/indicator/GB.XPD.RSDV.GD.ZS
+
+**Our World in Data**:
+
+Trade (%GDP): https://ourworldindata.org/grapher/trade-as-share-of-gdp
+
+Publications, science (per million population): https://ourworldindata.org/grapher/scientific-publications-per-million
+
+Countries by income classification, https://ourworldindata.org/grapher/countries-by-income-classification
+
+IBAN: https://www.iban.com/country-codes; conversion between Alpha-2 and Alpha-3 codes used by WorldBank and OurWorldinData
+
+These datasets were bound and then cleaned and wrangled as described below.
+<br>
+
+## c. Dataset preparation
+
+Download to my project folder a selected number of annual datasets from USPTO, at https://patentsview.org/data/annualized (1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020, 2024). Now, read one of them with data.table's fread for efficient handling of large files. Examine its top rows to take a peek at its variable structure.
+<br>
+
+```{r}
+setwd(getwd()) # ensure we're at the directory where the RMD is running at and all patent datasets are in subdir PATENTSVIEW
+dt <- fread("PATENTSVIEW/1980.csv")
+str(dt)
+head(dt, 1)
+
+```
+<br>
+
+Now bind all of the datasets into a single data.table, but to avoid memory overrun, fread only a selected number of columns from each of them, for efficient use of RAM.
+
+```{r}
+# list all the csv files stored in the project directory/PATENTS subdirectory
+
+file_list <- list.files(path =  "PATENTSVIEW", pattern = "*.csv", full.names = TRUE)
+file_list
+
+# select a specific set of columns in the datasets
+
+selected_columns <- c("grant_year","application_year","country","first_wipo_field_title","first_wipo_sector_title","men_inventors","women_inventors") 
+
+# bind all the datasets directly into a data.table format; note: I'm using a base-R for loop for clarity, but there must be a more sophisticated function for this.
+
+combined_data <- data.table()
+ for (file in file_list) {
+     temp_data <- fread(file, select = selected_columns)
+     combined_data <- rbind(combined_data, temp_data)
+ }
+
+str(combined_data)  # show number of rows and list columns
+head(combined_data, 3) # show the top rows
+```
+<br>
+
+Cleaning: check for  NAs and cells empty or with blanks and impute them as explained below
+
+```{r}
+# commented to avoid memory overrun - un-comment to check NAs
+# colSums(is.na(combined_data)) # show the number of NAs in each column
+# colSums(combined_data == "" | combined_data == " ", na.rm=TRUE)   # and the number of empty or blank spaces
+
+```
+<br>
+
+The NAs and blanks in "country" are critical, since country is a major independent categorical variable in this study. That information cannot be extracted or inferred from any of the other columns. Thus NA and blank country values will be turned to a new category: "Other". Application_year has NA values; they will be imputed to be equal to grant_year - mean(delay), where delay=grant_year minus application_year. The variables first_wipo_field_title and first_wipo_sector_title have  missing values, thus will be turned to "Unspecified".
+
+
+```{r}
+combined_data1 <- mutate(combined_data, application_year= ifelse(is.na(application_year), grant_year-round(mean(grant_year-application_year, na.rm = TRUE)), application_year))
+```
+
+<br>
+
+Impute the NA country with Other, wipo field or sector with Unspecified
+
+```{r}
+
+combined_data1$country[is.na(combined_data1$country) | combined_data1$country == ""] <- "Other"
+combined_data1$first_wipo_field_title [combined_data1$first_wipo_field_title == ""] <- "Unspecified"
+combined_data1$first_wipo_sector_title [combined_data1$first_wipo_sector_title == ""] <- "Unspecified"
+
+
+```
+<br>
+
+Read datasets from outside into the workind directory of the rmd: country code conversion table, income class table,  population, gdp, researchers, research spending, patent applications, exports, manufacturing, scientific publications, and trade.
+
+```{r}
+country_codes <- read_csv("country_codes-iban.csv", show_col_types = FALSE)
+population <- read_csv("population-worldbank.csv", show_col_types = FALSE)
+income_class <- read_csv("income-groups-ourworldindata.csv", show_col_types = FALSE)
+gdp <- read_csv("gdp-worldbank-reduced.csv", show_col_types = FALSE)
+researchers <- read_csv("researchers-per-million-worldbank.csv", show_col_types = FALSE)
+research_spending <- read_csv("research-spending-gdp-worldbank.csv", show_col_types = FALSE)
+patents_apps <- read_csv("annual-patent-applications-residents-worldbank.csv", show_col_types = FALSE)
+exports <- read_csv("exports-gdp-worldbank-reduced.csv", show_col_types = FALSE)
+manufacturing <- read_csv("manufacturing-gdp-worldbank.csv", show_col_types = FALSE)
+publications <- read_csv("sci-pubs-per-million-ourworldindata.csv", show_col_types = FALSE)
+trade <- read_csv("trade-share-gdp-ourworldindata.csv", show_col_types = FALSE)
+```
+
+<br>
+
+Join datasets, creating columns for country codes, income classification, population, GDP, researchers per million, research spending, all patent apps, exports, manufacturing, scientific publications and trade.
+
+```{r}
+combined_data2 <- left_join(combined_data1, country_codes, by= c("country" = "country"))
+combined_data2 <- left_join(combined_data2, income_class, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, population, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, gdp, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, researchers, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, research_spending, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, patents_apps, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, exports, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, manufacturing, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, publications, by= c("code" = "code", "grant_year"="year"))
+combined_data2 <- left_join(combined_data2, trade, by= c("code" = "code", "grant_year"="year"))
+head(combined_data2,3)
+
+
+```
+<br>
+
+## d. Description of the Variables to be used - More data cleaning and wrangling
+
+<br>
+
+**Income_class**: The World Bank relabeled the country classification according to GDP several times prior to 1989, with the most recent official classification starting in 1989 (used as early as 1987) and containing four income groups: Low, Lower Middle, Upper Middle, and High. Moreover, countries may move between classes over time, and some countries were not labeled in the original patents nor received an ISO-3 code. Thus, for proper comparison, the statistics will be restricted to rows with assigned income_class in years 1987-2024. When unavailable, income_class is imputed to "Unspecified".
+
+      mutate(combined_data2,  income_class = ifelse(is.na(income_class), "Unspecified", income_class))
+
+**Population**:  has remaining NAs for the rows without assigned country of issuance nor ISO-3 code. In addition, Taiwan (province of China) did not report a population, as it is officially added to China. Since the total aggregated population is 0, the mean yields NaN and cannot be used to impute population. Those NAs will not be imputed and those rows will be excluded from the calculations with na.rm.
+
+**Application_year**: Summary shows two abnormal entries for application_year>2024, a filter was used to find them, and they are imputed to grant_year minus the mean(delay), where delay = grant_year - application_year.
+
+     filter(combined_data2, application_year>2024)  # (to find and show the 2 abnormal entries)
+     mutate(combined_data2, application_year= ifelse(application_year > 2024, grant_year-round(mean(grant_year-application_year, na.rm = TRUE)),application_year))
+     
+**Men_inventor and women_inventors**: data summary shows for men a Max=111, which is not an error. It occurs for 3 separate applications from Sweden with 111 inventors; it appears to be the same or related patent application submitted at various times.   In women_inventors, there is one application with 20 women. It is not an error.
+
+**GDP**:   not available for rows without assigned country not ISO-3 code. Left as NA for now. Later these rows will be filtered out when appropriate or by the functions used.
+       
+**Researchers**: sparse information from World Bank, available from 1996 until 2022 for some of the countries. Imputed with the mean over the period 1996 until 2022 for each country. To be used only for that period.  NA outside that range.
+
+     combined_data2 |> 
+     group_by(code) |> mutate(
+     mean_res = mean(researchers[code != "" & grant_year >= 1996 & grant_year <=2022], na.rm = TRUE),   # mean for countries with code
+     researchers = ifelse(is.na(researchers) & code != "", mean_res, researchers)) |>
+     ungroup() |> select (-mean_res)   # remove temp col mean_res
+     
+**Rd_spending_gdp**: sparse information from World Bank, available from 1996 until 2022  for some of the countries. Imputed with the mean over the period 1996 until 2022 for each country. To be used only for that period.  NA outside that range.
+
+      combined_data2 |> 
+      group_by(code) |> mutate(
+      mean_res_spend = mean(rd_spending_gdp[grant_year >= 1996 & grant_year <=2022], na.rm = TRUE),
+      researchers = ifelse(is.na(rd_spending_gdp) & code != "", mean_res_spend, rd_spending_gdp)) |>
+      ungroup() |> select (-mean_res_spend)   # remove temp col mean_res_spend
+      
+**Patent_apps**: partial information from World Bank, available from 1980 until 2021 for most countries.  The analysis involving patent_apps will only be done in that time range.  NAs are imputed with the mean for each country.
+
+      combined_data2 |> 
+      group_by(code) |> mutate(
+      mean_patent_apps = mean(patent_apps[grant_year >= 1980 & grant_year <=2021], na.rm = TRUE),
+      patent_apps = ifelse(is.na(patent_apps) & code != "", mean_patent_apps, patent_apps)) |>
+      ungroup() |> select (-mean_patent_apps)   # remove temp col mean_patent_apps
+      
+
+**Exports_gdp**:   mostly complete since 1980-2024 but not for all countries. Not available for rows without assigned country not ISO-3 code. Left as NA.
+       
+**Manufacture_gdp**: mostly complete since 1980-2024 but not for all countries. Not available for countries without ISO-3 code. Left as NA.
+
+**Publications per million**: mostly complete from Our World in Data since 1980-2024 but not for all countries. Not available for countries without ISO-3 code. Left as NA.
+       
+**Trade-gdp**: mostly complete since 1980-2024 but not for all countries. Not available for countries without ISO-3 code. Left as NA.
+
+<br>
+
+Carry out these operations in a single code chunk:
+       
+```{r}
+
+combined_data3 <- combined_data2 |> dplyr::mutate(  
+       income_class = ifelse(is.na(income_class), "Unspecified", income_class),
+       application_year= ifelse(application_year > 2024, grant_year-round(mean(grant_year-application_year, na.rm = TRUE)),application_year)
+       )
+
+combined_data4 <- combined_data3 |> 
+     group_by(code) |> dplyr::mutate(
+     mean_res = mean(researchers[code != "" & grant_year >= 1996 & grant_year <=2022], na.rm = TRUE),
+     researchers = ifelse(is.na(researchers) & code != "", mean_res, researchers),
+     mean_res_spend = mean(rd_spending_gdp[grant_year >= 1996 & grant_year <=2022], na.rm = TRUE),
+      rd_spending_gdp = ifelse(is.na(rd_spending_gdp) & code != "", mean_res_spend, rd_spending_gdp),
+     mean_patent_apps = mean(patent_apps[grant_year >= 1980 & grant_year <=2021], na.rm = TRUE),
+      patent_apps = ifelse(is.na(patent_apps) & code != "", mean_patent_apps, patent_apps)) |>
+     ungroup() |> select (-mean_res, -mean_res_spend, -mean_patent_apps)
+
+
+```
+
+<br>
+
+**Reduced dataset for a full regression study**: combined_data5 is a subset that covers patents from 2000 until 2020, in order to exclude years where multiple variables have sparse data.  combined_data5 also excludes all rows where country (code) information is Other or TWN. Taiwan is excluded because it does not provide most of the critical information compiled in this dataset, such as population, gdp, r&d spending, trade, etc, as it is considered a province of China. It also excludes about 50 lines missing population, gdp, exports and manufacture, from small islands.  The remaining dataset contains 1.2M records.
+<br>
+
+```{r}
+
+combined_data5 <- combined_data4 |>
+      filter (grant_year >= 2000 & grant_year <= 2020 & code != "Other" & code != "TWN" & population != 0 & !is.na(population) & !is.nan(population))
+
+# Add a column for gdp per capita:
+
+combined_data5 <- dplyr::mutate(combined_data5, gdp_capita = gdp / population)   # to avoid error, I had to specify dplyr::mutate
+
+# Attempt to remove remaining NAs by imputing with the mean for each country, for researchers, rd_spending_gdp, patent_apps, pubs_millpop, trade_gdp
+
+combined_data6 <- combined_data5 |> 
+     dplyr::mutate (
+       across(where(is.numeric), ~ replace(., is.nan(.), NA))) |>               #making sure all NaN are NA so mean() works well
+     group_by(code) |> 
+     dplyr::mutate (
+       across(where(is.numeric), ~ replace(., is.na(.), mean(., na.rm = TRUE)))) |>   #replace all NAs by country means
+       ungroup()   # remove grouping
+
+```
+
+<br>
+
+The remaining NAs appear in smaller nations or nations that do not report all patent information. For those, the mean value calculation yields NaN (div by 0), and can't be replaced. This number of NAs is acceptable for the 1.2M records and won't affect the statistics significantly. However, we will create a further reduced dataset (combined_data7) by eliminating the rows that contain NAs or NaN to allow for plotting or correlation functions that do not accept NaN. The set contains 1,165,301 records.
+<br>
+
+```{r}
+
+combined_data7 <- drop_na(combined_data6)    # clean up all rows with any NA and NaN.
+
+summary(combined_data7)
+```
+
+<br>
+
+## e. Exploratory data analysis
+
+<br>
+
+What has been the frequency of patent_apps in 2000-2020 and the corresponding R&D spending -- for the world
+
+```{r}
+
+patent_apps_histg <- ggplot(combined_data7, aes(x = patent_apps)) +
+  geom_histogram(binwidth = 30, fill = "lightgreen", color = "blue") +
+  labs(title = "Patents 2000-2020, World", x = "Patents/year", y = "Frequency") +
+  theme_minimal()
+
+rd_spend_histg <- ggplot(combined_data7, aes(x = rd_spending_gdp)) +
+  geom_histogram(binwidth = 0.03, fill = "yellow", color = "red") +
+  labs(title = "R&D Spending 2000-2020, World", x = "R&D Spending, %GDP", y = "Frequency") +
+  theme_minimal()
+
+patent_apps_histg + rd_spend_histg
+
+
+```
+
+The patents histograms shows a right skew with come countries/years as far-right outliers. The R&D spending histogram shows an almost normal distribution centered around 2.8% of their GDP. 
+<br>
+
+How do total patent applications and R&D spending evolve over time?
+
+```{r}
+combined_grp_yr <- combined_data7 |>
+  group_by(grant_year) |>
+  summarize(patent_tot = n(), rd_spending_avg = mean(rd_spending_gdp), manufacture_avg = mean(manufacture_gdp), exports_avg = mean(exports_gdp), trade_avg = mean(trade_gdp), pubs_mill_avg = mean(pubs_millpop), researchers_avg = mean(researchers), na.rm=TRUE)  |>
+ungroup()
+
+y_scale = 8*10^-6 # guessed scaling factor for right-y axis
+ggplot(combined_grp_yr, aes(x=grant_year)) + 
+# plot the total patent line
+      geom_point(aes(y= patent_tot, color= "Patents")) + geom_line(linewidth=1, aes(y= patent_tot, color= "Patents"))+
+# plot the R&D spending line
+      geom_point(aes(y= rd_spending_avg/y_scale, color= "R&D")) + geom_line(linewidth=1, aes(y= rd_spending_avg/y_scale, color= "R&D"))+
+# draw the y axes  
+   scale_y_continuous(name = "Patents/year",
+  sec.axis = sec_axis(~. * y_scale, name = "R&D Spending, %GDP")) +
+   scale_x_continuous(name = "Year") +
+  labs(title = "World Patents and R&D Spending in the 2000-2020 Period") +
+  scale_color_manual(values = c("Patents" = "blue", "R&D" = "red")) +
+  theme( axis.title.y.left = element_text(color = "blue"),
+         axis.title.y.right = element_text(color = "red"),
+    legend.position = "bottom",
+    legend.title = element_blank())
+
+```
+
+There is a visual indication that both Patent applications and R&D spending grow in concert.
+
+<br>
+
+More clearly, explore the connected scatterplot of patents vs rd investment to show the dependence of increase in Patents relative to increase in R&D spending:
+
+```{r}
+
+ggplot(combined_grp_yr, aes(x = rd_spending_avg, y = patent_tot, label = grant_year)) +
+  geom_point() +
+  geom_line() + # connect rd_spending_avg vs patent_tot in order of the 'year' variable
+  geom_text(vjust = -1, hjust = 0.5) +  # add year labels
+  labs(
+    title = "Patents vs. R&D Investment",
+    x = "R&D Investment (per year)",
+    y = "Patents (per year)"
+  ) +
+  theme_bw()
+
+
+
+```
+
+There is a dramatic growth occurring after 2005, with the largest increase in patents relative to R&D investment in the 2010-2015 timerange.
+
+<br>
+
+Explore plot of patents vs manufacture :
+
+```{r}
+
+ggplot(combined_grp_yr, aes(x = manufacture_avg, y = patent_tot, label = grant_year)) +
+  geom_point() +
+  geom_line() + # line connecting y and x for each year group 
+  geom_text(vjust = -1, hjust = 0.5) + 
+  labs(
+    title = "Patents vs. Manufacturing",
+    x = "Manufacturing (fraction of GDP)",
+    y = "Patents (per year)"
+  ) +
+  theme_bw()
+
+
+
+```
+
+In this case, patents show a decrease relative to increasing manufacturing, which I need to rationalize better. A tentative explanation is that as countries divert more GDP funds to increasing their inhouse manufacturing capability (as the US is trying to do now), they spend less GDP funds in science and technology R&D. But it is a tentative hypothesis that would need to support.
+
+<br>
+
+Explore the connected scatterplot of patents and exports:
+
+```{r}
+
+ggplot(combined_grp_yr, aes(x = exports_avg, y = patent_tot, label = grant_year)) +
+  geom_point() +
+  geom_line() + # line connecting y and x for each year group 
+  geom_text(vjust = -1, hjust = 0.5) + 
+  labs(
+    title = "Patents vs. Exports",
+    x = "Exports (fraction of GDP)",
+    y = "Patents (per year)"
+  ) +
+  theme_bw()
+
+
+
+```
+
+There is an overall positive slope. 
+
+<br>
+
+Explore the connected scatterplot of patents and publications per million:
+
+```{r}
+
+ggplot(combined_grp_yr, aes(x = pubs_mill_avg, y = patent_tot, label = grant_year)) +
+  geom_point() +
+  geom_line() + # line connecting y and x for each year group 
+  geom_text(vjust = -1, hjust = 0.5) + 
+  labs(
+    title = "Patents vs. Publications",
+    x = "Publications (per million people)",
+    y = "Patents (per year)"
+  ) +
+  theme_bw()
+
+
+
+```
+
+Since 2005 both patents and publications have grown in concert.
+<br>
+
+Explore the connected scatterplot of patents and researchers:
+
+```{r}
+
+ggplot(combined_grp_yr, aes(x = researchers_avg, y = patent_tot, label = grant_year)) +
+  geom_point() +
+  geom_line() + # line connecting y and x for each year group 
+  geom_text(vjust = -1, hjust = 0.5) + 
+  labs(
+    title = "Patents vs. Researchers",
+    x = "Reserchers (per million people)",
+    y = "Patents (per year)"
+  ) +
+  theme_bw()
+
+
+
+```
+
+In agreement with previous plot on Patents vs R&D, there is a clear link between Patents and Researchers since they are incentivized by the investment in R&D.
+
+
+<br>
+
+Let's see on a yearly basis how income_class affected the number of patents over the 20 year period.
+
+```{r}
+
+combined_grp_yr_class <- combined_data7 |>
+  group_by(grant_year, income_class) |>
+  summarize(malepatents = sum(men_inventors), femalepatents = sum(women_inventors), patent_tot = n(), na.rm=TRUE) |> ungroup()
+
+ggplot(combined_grp_yr_class, aes(x=grant_year, y=patent_tot, color=income_class)) + 
+    geom_point() + geom_line(linewidth=1)+ 
+    labs(title = "Total Patents per Year by Income Class",
+    x = "Year", y = "Total Number of Patents",
+    color = "Income Class") #+  theme_minimal() + scale_color_brewer(palette = "Set1")
+
+
+```
+
+<br>
+
+Let's transform the y axis so that lower income classes are obvious
+
+```{r}
+
+
+ggplot(combined_grp_yr_class, aes(x=grant_year, y=patent_tot, color=income_class)) + 
+   geom_point() +  geom_line(linewidth=1)+ 
+    labs(title = "Total Patents per Year by Income Class",
+    x = "Year", y = "Total Number of Patents",
+    color = "Income Class")  + scale_y_log10()
+
+
+
+```
+
+<br>
+
+There is a clear trend over the last 15 years for Upper-middle income countries to become relatively more productive in patent applications, and inversely so for Low income countries.
+
+
+<br>
+
+Let's see how gender has faired over the 2 decades
+
+```{r}
+
+y_scale= 3.5 # guess the scaling factor for right-y
+
+ggplot(combined_grp_yr_class, aes(x=factor(grant_year))) +
+  geom_col(aes(y = malepatents, fill = "Male"), position = "dodge", width = 0.4) +
+  geom_col(aes(y = femalepatents * y_scale, fill = "Female"), position = position_dodge(width = 0.4), width = 0.4) +
+  scale_y_continuous(name = "Male coauthors", sec.axis = sec_axis(~ . / y_scale, name = "Female coauthors")) +
+  scale_fill_manual(name = "Patent authorship",
+    values = c("Male" = "blue", "Female" = "red")) +
+  labs(title = "Male and Female applications in the 2000-2020 Period", x="Year")
+    
+```
+
+<br>
+
+The fraction of female/male inventors has grown from 0.114 in 2000 to 0.262 in 2020.
+
+
+<br>
+
+**Correlations among the variables**
+
+To examine the pairwise linear correlations among the variables, we use the cor() function.
+
+```{r}
+rel_matrix <- cor( combined_data7 |> select(gdp, gdp_capita, rd_spending_gdp, researchers, exports_gdp, manufacture_gdp, trade_gdp, pubs_millpop, patent_apps))
+# rel_matrix   #uncomment to see the matrix
+ # allow plotting in the margin 
+corrplot(rel_matrix, method = "color", type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 40, addCoef.col = "black", col = brewer.pal(n = 8, name = "PiYG"),
+        title="\nCorrelations")
+
+```
+
+<br>
+
+**Conclusion**
+
+The strongest positive correlations are among exports and trade (which makes sense since trade involves exports - imports) and R&D researchers and R&D spending (which also makes sense). There is also a significant correlation between GDP/capita and publications since those happen most frequency among higher income countries. The strongest negative correlations are among growth of manufacture and growth of  GDP and GDP/capita. There are also significant negative correlations between trade or exports and gdp.  These negative correlations, as indicated before, are difficult to rationalize.  The complex relationship among all variable be better understood utilizing **multilinear regression.** A logical dependent variable is GDP, as an end point of increased scientific, technological, manufacturing and trade activities of a country.
+
+The logical progression is from increased promotion of innovation (R&D investment) towards scientific and technological capability demonstrated by researchers and scientific publications, towards increased patent applications, towards tangible outcomes (represented by manufacturing, trade and exports), towards increased GDP. In principle, to be demonstrated.
+
+Thus in the following analysis, I will focus on GDP as the dependent variable of a multilinear regression.
+<br>
+
+## f. Statistical Analysis
+
+<br>
+
+Based on the rationale presented above, we will do a multiple linear regression model with GDP as the outcome variable:
+
+
+```{r}
+
+mlrmodel <- lm (gdp ~ rd_spending_gdp + researchers + exports_gdp + manufacture_gdp + trade_gdp + pubs_millpop + gdp_capita + patent_apps, data= combined_data7) # by default ignores NAs
+summary(mlrmodel)
+
+```
+
+<br>
+
+**Conclusion**
+
+The p-value less than 0.05, and close to zero for the intercept, for each coefficient and the entire model means that the model is statistically significant and that each independent variable is a meaningful predictor of the dependent variable.  Thus we can reject the null hypothesis that the predictors have no effect.  The large F value also indicates the overall goodness of fit. The adjusted R-square value of 91% means that the model explains 91% of the variance of the dependent variable. The residuals seem to follow a normal distribution.
+
+The negative intercept shows the prediction with all the independent variables set to zero, and has only mathematical meaning.  The regression coefficients show how each independent variable affects the dependent one. For example, A unit change of rd_spending (1% of GDP), which is roughly $10^{11}$ dollars,  increases GDP by $6.6 \times 10^{12}$ dollars. In the context of this project, such has represented a very meaningful return for the investment for the average country in the 2000-2020 period. But before accepting this, let's examine how accurate this linear model is.
+<br>
+
+**Are model assumptions correct?**
+
+We will visually check for linearity of the predicted GDP with respect to some of the independent variables, expecting the data points to appear to follow a linear trend.  Warning: however, I expect the  predicted line (BLUE line) produced by lm() in the ggplot to be correct only with respect to slope, but not in the y-values, because it assumes that only one independent variable is varying while the others are held constant. But it serves to illustrate the point.
+
+<br>
+
+**Linearity of GDP against R&D Spending and Patents:**
+
+
+```{r}
+combined_data7 |>
+ggplot( aes (y = gdp, x = rd_spending_gdp))+
+geom_point() + geom_smooth(method = 'lm', se = FALSE) +
+labs (title = 'GDP against R&D Investment')
+```
+
+
+```{r}
+combined_data7 |>
+ggplot( aes (y = gdp, x = patent_apps))+
+geom_point() + geom_smooth(method = 'lm', se = FALSE) +
+labs (title = 'GDP against Patents')
+``` 
+
+<br>
+
+The graphs illustrate the situation that although trends appear linear, the individual observations are not normally distributed around a straight line and tend to accumulate towards the smaller values of GDP.
+
+In general, the behavior with respect to the other variables is similar. 
+
+<br>
+
+**Conclusions** 
+
+Although the R-squared correlation factor of 91% for the GDP multinear model is high, visually one can appeciate that the assumptions of normal distribution and linearity of GDP with respect to most of the variables are not well satisfied. In general, one can observe a strong right skew, with clumping of the data towards the smaller GDPs.
+<br>
+
+**Modified model**
+ 
+Thus, we proceed to transform some of the variables to amplify the influence of the smaller GDP over the model. To do that, we do a log transformation of GDP. Upon some test runs, I saw that doing log transformation of two of the independent variables also improves the model, increasing the R-squared from 86% with the original variable values, to 96% when we use the log(patent applications) and log(R&D spending). We did not proceed to transform the other independent variables at this point. This is just to illustrate the point that the model can be improved. Future studies with PCA may more efficiently guide us.
+
+```{r}
+
+#  Convert to log(gdp), log(patent_apps), log(rd_spending_gdp)
+
+combined_data7$gdp_log <- log(combined_data7$gdp)   # transform gdp
+combined_data7$patent_log <- log(combined_data7$patent_apps) # transform patent_apps
+combined_data7$rd_spending_log <- log(combined_data7$rd_spending_gdp) # transform rd_spending_gdp
+
+#  The log transformations introduce infinite values (log of very small numbers) and prevents lm() from running. Thus I had to convert the infinites to NA, so that lm() can ignore them and run ok.
+
+combined_data7$gdp_log[is.infinite(combined_data7$gdp_log)] <- NA   
+combined_data7$patent_log[is.infinite(combined_data7$patent_log)] <- NA
+combined_data7$rd_spending_log[is.infinite(combined_data7$rd_spending_log)] <- NA
+```
+
+<br>
+
+Now do the new multilinear regression of the modified model
+
+```{r}
+mlrmodel_log <- lm (gdp_log ~  patent_log + rd_spending_log + researchers + exports_gdp + manufacture_gdp + trade_gdp + pubs_millpop + gdp_capita, data= combined_data7) # by default ignores NAs
+summary(mlrmodel_log)
+
+```
+<br>
+
+**Conclusion**
+
+The new model displays very high R-squared value of 96% and rather normally distributed residuals. The p values much smaller than 0.05 for all of the regression coefficients, the intercept, and the model, indicates that they are statistically significant with higher than 95% confidence. The corresponding F-value is also huge,in accordance. The R-squared means that the model explains 96% of the variance of the log of GDP.
+
+
+It would be interesting to calculate the ROI of GDP allocated to R&D predicted by this better model. Using the elasticity concept, a 1% increase in rd_spending results in a 0.079% increase in GDP.  For an investment of 1% of $10^{13}$ dollars, the return is about $7.9 per dollar invested.
+
+But we must check the assumptions behind the linear model.  A visual examination of fit is a very fast approach. 
+<br>
+Plot the log (GDP) vs log (Patents) curve:
+
+```{r}
+combined_data7 |>
+ggplot( aes (y = gdp_log, x = patent_log))+
+geom_point() + geom_smooth(method = 'lm', se = TRUE, aes(group = 1)) +
+labs (title = 'log(GDP) against log(Patent Applications)')
+```
+
+<br>
+
+This result is much more pleasing visually. The points show more balanced distribution around a straight line. Again, the slope is the significant aspect, since the y-axis value is approximate because ggplot:: lm() is predicting a line from a single variable (patent_log) while keeping the other independent variables fixed.
+<br>
+
+Plot the log (GDP) vs log (R&D investment) curve
+
+```{r}
+combined_data7 |>
+ggplot( aes (y = gdp_log, x = rd_spending_log))+
+geom_point() + geom_smooth(method = 'lm') +
+labs (title = 'log(GDP) against log(R&D Spending)',
+      x = "log(R&D Spending)", y = "log(GDP)")
+
+```
+
+<br>
+
+The result is more visually pleasing than the original model. The points in the log model follow better a straight line (although with large residuals around the mean values).
+
+<br>
+
+Retrieve back the predicted values of GDP from the log-log model and plot them.  Note: here we are not using ggplot lm() to calculate the straight line. But we are using the log-log model to calculate the predictions in the original units (GDP in $, patents per year, R&D as %GDP).
+
+
+```{r}
+
+combined_data7$predicted_log_gdp <- predict(mlrmodel_log, newdata = combined_data7)  # predicted log(gdp)
+
+combined_data7$predicted_gdp <- exp(combined_data7$predicted_log_gdp)  # predicted gdp
+
+
+# Plot again
+
+combined_data7 |>
+ggplot( aes (y = gdp, x = patent_apps))+
+geom_point() +     # original points
+geom_point (data= combined_data7, aes(y= predicted_gdp, x= patent_apps, color = "Predicted GDP")) +
+      scale_color_manual(name = "Legend", values = c("Predicted GDP" = "red")) + 
+      scale_shape_manual(values = c("Predicted GDP" = 16)) +
+labs (title = 'GDP against Patent Applications per year',
+      x = "Patent Applications", y = "GDP, U$S") +
+theme( plot.background = element_rect(fill = "lightyellow"), # Outer plot background
+       panel.background = element_rect(fill = "lightblue")) # Inner panel background)
+
+combined_data7 |>
+ggplot( aes (y = gdp, x = rd_spending_gdp))+
+geom_point() +     # original points
+geom_point (data= combined_data7, aes(y= predicted_gdp, x= rd_spending_gdp, color = "Predicted GDP")) +
+      scale_color_manual(name = "Legend", values = c("Predicted GDP" = "purple")) +  
+      scale_shape_manual(values = c("Predicted GDP" = 16)) +  
+labs (title = 'GDP against R&D Spending',
+      x = "R&D Spending, %GDP", y = "GDP, U$S") +
+theme( plot.background = element_rect(fill = "lightblue"), # Outer plot background
+       panel.background = element_rect(fill = "lightyellow")) # Inner panel background)
+```
+
+<br>
+
+**Conclusion**
+
+The predictions are amazingly close to the original data points.
+
+
+It is interesting to see whether the model can now incorporate categorical variables.
+
+<br>
+
+Adding income-level as a factor to the model, where the reference level is "Low" income countries; the 4 levels are: Low, Lower-middle, Upper-middle, and High
+
+
+```{r}
+
+combined_data7$income_class <- factor (combined_data7$income_class,
+             levels= c("Low-income countries","Lower-middle-income countries","Upper-middle-income countries","High-income countries"),
+             labels= c("Low", "Lower-middle", "Upper-middle", "High"))
+
+mlrmodel_log <- lm (gdp_log ~  patent_log + rd_spending_log + income_class + researchers + exports_gdp + manufacture_gdp + trade_gdp + pubs_millpop + gdp_capita, data= combined_data7) # by default ignores NAs
+
+summary(mlrmodel_log)
+```
+
+<br>
+
+The results are excellent still. All p values are almost zero, the F is very high, the residual distribution seems almost normal around 0. The goodness of fit (R-squared value) is 0.96, meaning that the model describes 96% of the variance of the log GDP. It is interesting to note that among the 4 income classes, the Upper-middle class has the largest effect (slope=0.4028) on the growth of log(GDP). Researchers, Exports and Manufacture have negative slopes, effects that come from the actual data also seen in the linear model of gdp. We must investigate these negative effects in more depth to understand them. 
+
+<br>
+
+Visualize the effect of income_class of countries on the effect of patents on GDP.
+
+
+```{r}
+combined_data7 |>
+ggplot( aes (y = gdp_log, x = patent_log, color= income_class))+
+geom_point() + geom_smooth(method = 'lm',se = FALSE) +
+# scale_color_manual(name= "Income Class", values = c("Low" = #"red","Lower-Middle"="orange","Upper-Middle"="green","High" = "blue"),
+#labels = c("Low", "Lower-Middle", "Upper-Middle","High")) +
+labs (title = 'log(GDP) against log(Patent Applications)',
+      x = "log(Patent Applications)", y = "log(GDP)",
+      color = "Income Class") +
+theme( plot.background = element_rect(fill = "lightblue"), # Outer plot background
+       panel.background = element_rect(fill = "lightyellow")) # Inner panel background)
+
+```
+
+<br>
+
+The result is pleasing. The 4 classes of income follow similar trends, with the dispersion or variance around predicted lines roughly balanced; the low-income countries show the largest variance. The high and middle-high countries file the most patents, as incentives (%GDP allocated to R&D) is higher than in middle-low and low countries. But let's examine that point further now.
+<br>
+
+Visualize the effect of income_class of countries on the effect of R&D funding on GDP:
+
+
+```{r}
+combined_data7 |>
+ggplot( aes (y = gdp_log, x = rd_spending_log, color= income_class))+
+geom_point() + geom_smooth(method = 'lm', se = FALSE) +
+labs (title = 'log(GDP) against log(R&D spending)',
+      x = "log(R&D spending)", y = "log(GDP)",
+      color = "Income Class") +
+theme( plot.background = element_rect(fill = "lightblue"), # Outer plot background
+       panel.background = element_rect(fill = "lightyellow")) # Inner panel background)
+```
+
+<br>
+
+The result is not as pleasing in terms of visual distribution of points but the slopes are meaningful. Interestingly they show that Upper-middle income countries GDP appear to benefit the most from investment, although the High income countries allocate the highest percentages of GDP to R&D.
+
+<br>
+
+**Are the statistical assumptions satisfied by the log model?**
+
+Let's now examine some statistical aspects to ascertain the validity of the multilinear log models. We'll examine normality and independence of residuals, homoscedasticity, and multicollinearity of the independent variables. I'll just use simple visual examination.
+
+<br>
+
+**Residuals: independence and normality**
+
+
+```{r}
+
+# do a Q-Q plot to visualize normality
+
+        plot(mlrmodel_log, which = 2) # to generate the Normal Q-Q plot
+
+
+
+```
+
+<br>
+
+The residuals fall along the diagonal from -2 to 3 Q, but the deviations from the diagonal line at the tails imply non-normality.  To reassess, try histogram:
+
+
+```{r}
+hist(residuals(mlrmodel_log))
+
+```
+
+<br>
+
+This looks a lot better, not exactly symmetrical but left skewed.
+<br>
+
+**Homoscedasticity:**  let's check for residual independence, by plotting residuals against fitted gpd_avg plot
+<br>
+```{r}
+
+        plot(mlrmodel_log, which = 1) # this generates the residuals vs fitted 
+
+```
+
+<br>
+
+This looks like residuals are independent without specific pattern.  The spread seems uniform across the range of fitted values, i.e., shows homoscedasticity.  But let's recheck with a plot of residuals vs order by year.
+<br>
+
+```{r}
+plot(1:length(residuals(mlrmodel_log)), residuals(mlrmodel_log), xlab = "Order, by year", ylab = "Residuals")
+```
+
+<br>
+
+The 1.2M data points result in a "blob" but no specific symmetric pattern (no autocorrelation) that I can see, except for some "streams".
+<br>
+
+
+**Multicollinearity of the independent variables**
+
+Let's use again the cor() function but with the independent variables that include two of the log-transformed variables.
+
+```{r}
+cor_matrix <- cor( combined_data7 |> select(rd_spending_log,patent_log,researchers,manufacture_gdp,trade_gdp,pubs_millpop,exports_gdp))
+cor_matrix
+corrplot(cor_matrix, method = "color", type = "upper", order = "hclust",
+         tl.col = "black", tl.srt = 40, addCoef.col = "black", col = brewer.pal(n = 8, name = "PiYG"),
+         title = "/nCorrelations")
+```
+
+<br>
+
+**Conclusion**
+
+The deep green diagonal is the expected autocorrelation. The green in trade and export (1.0) is a concern for the robustness of the model. The other partial correlations are more acceptable: researchers and rd_spending (.65) and patents and rd_spending (.48) are expected.  The dark purple shows anticorrelation between manufacture and publications  (0.55), patents and exports (.72), and patents and trade (.73) are hard to explain as stated before.
+
+<br>
+
+## g. Overall Conclusions
+
+The initial goal of the project was to investigate the assumption that R&D investment by nations leads to increased production of intellectual property patents, which lastly impact economic growth as measured by GDP. As the project progressed, other assumptions were made, with respect to the effect of gender on patent production, and the influence of income status of nations on their ability to produce patents and thus increase their GDP.
+
+In our mental model, the basic framework supporting patent (IP) production has three legs:  (1) a strong investment in scientific or technical R&D promotion (measured by GDP% invested in R&D, number of researchers and number of scientific publications),  (2) manufacturing capability to enable technicians and scientists to test, develop and commercialize their concepts (measured by manufacturing as fraction of GDP), and (3) a strong legal, IP protection, and commercialization policy (measure by exports and trade as fractions of GDP).
+
+The initial linear model relating GDP to the various variables yielded interesting and statistically significant results supporting the alternative hypothesis that increased investment in R&D leads to GDP growth (many-fold ROI), and that increase in patent applications leads to GDP growth.  So does supporting trade.   On the other hand, the computed model predicts negative effects on GDP from the other variables (export, manufacturing, researchers and publications.) This goes against our assumed patent-support ecosystem.  Further statistical examination of the linear model shows that despite having an excellent R-squared of 91%, the basic assumption of linearity and normality of the prediction and the residual distribution cannot be proven, withdrawing confidence from the predicted outcome.
+
+A modified multilinear model was constructed, relating log-transformed GDP (dependent variable) to log-R&D investments, log-patents, and to the other linear independent variables. This model is also statistically significant and with goodness of fit R-square of 96%. Moreover it displays linearity and normality of predictions and homoscedasticity of residuals much better than the original model.  The prediction again shows that increased R&D investment leads to GDP growth, with a ROI approximating $6.90/$1 invested. Increased patent applications, trade and scientific publications also lead to GDP growth. However, this model still predicts negative effects on GDP from increases in researchers, exports, and manufacturing, which defies a simple explanation. Nevertheless, the model shows that countries with Higher-middle income contribute to GDP growth at the fastest rate compared to Low, Lower-middle, and High income countries. The regression model didn't include gender as a variable, but in the exploratory analysis, it was shown that the female/male-inventors ratio is about 25% now and increasing faster in recent years.  
+
+<br>
+
+## e. Obstacles
+
+The major obstacle in this project was compiling the dataset because it required multiple sources, followed by extensive data cleaning and wrangling in order to arrive at a database wihout NA without introduction of bias. The final dataset covers 20 years and contains 1.2M records. This also originated complications with crashes when R was computing some of the graphics.  
+
+The modeling itself didn't present many obstacles (other than plenty of time dedicated to it). In the end, as said above, the modeling can be improved with further effort.
+
+<br>
+
+## h. Future steps
+
+After examining the collinearities, I can improve the log(GDP) model by removing one or two of these independent variables: trade and researchers.  Trade in practice includes both exports and imports.  For the purpose of this project, productivity is better measured by exports than imports. Thus, trade is the logical variable to be dropped. Researchers is definitely linked to rd_spending, so researchers could be dropped.  The largest concern is the unexpected anti correlation between patents and exports and trade as well as anticorrelation between manufacture and publications. I ran out of time to investigate how to explain these anticorrelations and then logically improve the model.
+
+One other aspect left for future work is possibly most valuable, which is to investigate the type or class of patents that provide the largest returns for countries. In this dataset I compiled data on WIPO field and WIPO sector which are high level classifications of patents. Initially one could analyze the impact of these classes on either GDP or exports or manufacture.  Further work for the future is to include in this dataset finer details on patents available in USPTO, EPO, WIPO and other sources.
+
+<br>
+
+## i. References
+
+* Class notes
+* H. Wickham, et al., R for Data Science, 2nd Ed., https://r4ds.hadley.nz/ (2023)
+* A. Douglas, et al., An Introduction to R, https://intro2r.com/ (2024)
+* USPTO (US Patent and Trademark Office) "Economics of IP", https://www.uspto.gov/ip-policy/economic-research, accessed in November, 2025.
+* USPTO "Patent Basics" (https://www.uspto.gov/patents/basics), accessed in November, 2025.
+* WIPO (World Intellectual Property Organization, part of the UN), "Intellectual Property", https://www.wipo.int/portal/en/index.html, accessed in November, 2025.
+* EPO (European Patent Office) "Patent Information Tour", https://www.epo.org/en/searching-for-patents/helpful-resources/patent-knowledge-news/patent-information-tour
+
+<br>
+
+## j. Published
+
+https://rpubs.com/rmiranda/1369900
+
