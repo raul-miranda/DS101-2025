@@ -1,0 +1,158 @@
+---
+title: "Homework 3"
+author: "Raul Miranda"
+output: html_document
+date:   Sep 28, 2025
+---
+
+Do not change anything in the following chunk
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+You will be working on olympic_gymnasts dataset.  Do not change the code below:
+
+```{r message = FALSE}
+olympics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-07-27/olympics.csv')
+
+olympic_gymnasts <- olympics %>% 
+  filter(!is.na(age)) %>%             # only keep athletes with known age
+  filter(sport == "Gymnastics") %>%   # keep only gymnasts
+  mutate(
+    medalist = case_when(             # add column for success in medaling
+      is.na(medal) ~ FALSE,           # NA values go to FALSE
+      !is.na(medal) ~ TRUE            # non-NA values (Gold, Silver, Bronze) go to TRUE
+    )
+  )
+
+```
+
+
+More information about the dataset can be found at
+
+https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-07-27/readme.md
+
+
+**Question 1:** Create a subset dataset with the following columns only: name, sex, age, team, year and medalist.  Call it df. 
+
+
+```{r}
+df<- olympic_gymnasts|>
+  select(name, sex, age, team, year, medalist)
+df
+
+```
+
+
+**Question 2:** From df create df2 that only have year of 2008 2012, and 2016
+
+```{r}
+
+# at least a couple of ways this can be done: using logical tests and OR operator
+
+df2 <- df |>
+  filter (year == 2008 | year == 2012 | year == 2016)
+df2
+
+# or in a more compact way, using the %in% operator
+
+df2 <- df |>
+  filter (year %in% c(2008, 2012, 2016))
+df2
+
+```
+
+
+
+**Question 3** Group by these three years (2008,2012, and 2016) and summarize the mean of the age in each group.
+
+```{r}
+
+df2 |> group_by (year) |>
+      summarize (avg_age = mean(age, na.rm=TRUE))    #NAs were removed at the top, but as a precaution, I'm adding the na.rm argument
+
+```
+
+
+
+
+**Question 4** Use olympic_gymnasts dataset, group by year, and find the mean of the age for each year, call this dataset oly_year.  (optional after creating the dataset, find the minimum average age)
+
+```{r}
+
+oly_year  <- olympic_gymnasts |> group_by (year) |>
+         summarize (avg_age = mean (age, na.rm=TRUE))    #age NA were removed at the top so it's not necessary to repeat, but done just for consistency
+oly_year
+
+
+# the minimum avg age can be directly found as:
+
+oly_year |> min(oly_year$avg_age, na.rm=TRUE)   #na.rm done for consistency
+
+
+# but it is valuable to show the year that minimum occurred.  For that, I'll use filter():
+
+oly_year |> filter (avg_age == min(avg_age, na.rm=TRUE))    # find row with the min avg_age
+
+
+```
+
+
+**Question 5** This question is open ended.  Create a question that requires you to use at least two verbs.  Create a code that answers your question. Then below the chunk, reflect on your question choice and coding procedure 
+
+
+*My question is*: how are teams/countries ranked according to "efficacy at winning medals" over the entire history covered by this dataset? "Efficacy"  can be defined as the fraction of gymnasts that won medals for each team/country. Although this fraction varies by year, for simplicity I calculate the average efficacy over all the years. Teams are better identified by the variable NOC (national olympic committee code) and correspond to countries but not exactly. For example ITA corresponds to two team: Italy and Pistoja/Firenze. This was dealt with as discussed below.
+
+```{r }
+# LONG APPROACH:  I first went through a long and stepwise approach: grouping the dataset by noc, summarizing to get the total number of gymnast entries by noc, filtering the entries that had medalists, summarizing again to get the number of medals by noc, and then dividing number of medals by total entries to get the efficacy ratios. This took 8 lines in R plus more lines to merge intermediate dataframes and display intermediate results.
+
+# SHORT APPROACH: after days of playing with this problem and reading more about the use of summarize() I realized I could get all the calculations done within **a single summarize() call**. Thus, in the shorter approach, I grouped the dataset by noc, and inside the call to summarize(), I added the number of entries by noc using n(), added the number of medalists using sum(), which coerces TRUE to 1 and FALSE to 0, and calculated efficacy as the ratio of number of medalists to number of entries by noc. Finally, I arranged the dataframe in descending order of efficacy.  This approach took only 4 lines of R within the same pipe. Since the ratio of number of medalists to number of entries in each noc is by definition the mean value of medalists in each noc, I then simplified the calculation even further by calling mean() of medalists inside the summarize() function. Mean(medalist)  automatically adds up all medalists and adds up all entries, and calculates the fraction (here called 'efficacy').  
+
+
+#SHORT APPROACH, by piping all verbs and not making duplicate calls to summarize():
+
+
+eff_sorted <- olympic_gymnasts |>                 # pipe the original olympic_gymnasts dataset created above
+  select(team, noc, medalist) |>                  # select columns: team, noc, medalist, to create a reduced dataframe
+  group_by(noc) |>                                # group by noc
+  summarize(                                      # use summarize to
+    ntot = n(),                                   # 1. count the number of entries per noc
+    nmedals = sum(medalist, na.rm = TRUE),        # 2. sum the number of medalists after removing the NAs
+    efficacy = nmedals/ntot) |>                   # 3. calculate efficacy as ratio of medalists to total entries by noc
+  arrange(desc(efficacy))                         # then, arrange in descending order of efficacy.
+eff_sorted
+
+
+#AN ALTERNATIVE APPROACH, by exploiting the definition of mean() of medalists within each group, which is the sum of medalists divided by number of entries, which is what I called 'efficacy'
+
+eff_sorted2 <- olympic_gymnasts |>                  # pipe the olympic_gymnasts dataset
+  select(team, noc, medalist) |>                   # select columns: team, noc, medalist
+  group_by(noc) |>                                 # group by noc
+  summarize(                                       # use summarize to
+    efficacy = mean (medalist, na.rm = TRUE)) |>   # calculate efficacy using mean(): which is the ratio of number of medalists to total entries by noc 
+  arrange(desc(efficacy))                          # then, arrange in descending order of efficacy.
+eff_sorted2
+
+
+
+```
+
+**Discussion:** *Enter your discussion of results here.*
+
+The simple question of which teams/countries have historically been the most efficient in winning medals turned out to be more interesting and difficult to deal with in R than I thought. I had to take a simple approach and not deal with all of the various nuances. For example, some countries have changed names and geographical area over the historic period covered by the dataset. Also, some of the team names in the dataset are not countries (for example team: Philadelphia Turngemeinde, Philadelphia). Since the noc for that team is USA, I interpreted that its athletes competed for USA.  In addition, the answers could have been more interesting if the color of medal had been taken into account. Or if the question had also asked about the efficacy of individual athletes. I did not deal with those issues to avoid converting this question into a massive project. 
+
+The results were somewhat unexpected to me based on my incorrect assumption that countries with higher number of gymnasts are the most efficient. However, Denmark is the most efficient team (efficacy: 0.38), without having the largest number of gymnasts. Norway's high efficacy (0.35) is also unexpected. Other teams followed my assumption, particularly USSR/Russia/EUN, Germany/East Germany/GDR and China. The USA, having one the largest number of gymnasts, is thirteenth in terms of efficacy in winning medals (0.10). Interestingly, one can explore historical questions such as: how have countries performed before and after major disruptions. As simplistic examples, take USSR before and after splitting. USSR was second (efficacy of 0.36), EUN (Unified Team of 1992 olympics) was fourth (efficacy of 0.33) and after splitting, Russia is seventh (efficacy of 0.20). Before the Berlin wall collapse, East Germany was sixth (efficacy of 0.20), West Germany was thirty-sixth and after reunification, Germany is sixteenth (efficacy of 0.08). 
+
+In terms of R, I found that the functions covered in the lectures were sufficient to deal with my question.  However, it took  much effort to learn the appropriate way to use summarize(); for example that summarize removes the columns that are not explicitly entered. Also that group_by() two variables (noc, team) prior to summarize() does not produce the desired results by noc (e.g., Italy and Pistoja/Firenze are grouped separately although both belong to noc ITA). Finally, I learned that summarize() allows calculations as arguments to produce new columns (similar to mutate()), simplifying the pipe significantly.
+  
+All and all, it was a useful exercise for learning R. This dataset gives an opportunity to explore various types of questions, even of world history.
+
+   
+**Publish in RPubs**
+
+Published at https://rpubs.com/rmiranda/1348319
+
+   
+   
