@@ -1,0 +1,82 @@
+---
+title: "Homework 1"
+author: "Enter your name here"
+output: html_document
+---
+
+## R Basics
+
+You can insert an R code chunk into an R Markdown document by using a keyboard shortcut. The default keyboard shortcut to insert an R code is:
+
+Windows/Linux: Ctrl + Alt + I
+Mac: Command + Option + I
+
+Make sure to comment on your code using #
+
+#### Problem 1:
+
+1. From set = {1.5, 15, 0, 54, 23}, pick two numbers and perform the Following Operations:
+
+.Subtraction
+.Multiplication
+.square root
+
+```{r}
+
+```
+
+#### Problem 2
+
+Suppose you have a set of numbers representing the assignments scores:
+
+```{r}
+scores <- c(87,100, 91, 95, 81.5, 0, 39, 74, 92)
+
+#Calculate the average of the scores, and round your answer to two decimal number
+
+
+#Find the Maximum and Minimum score
+
+
+#Find how many scores were above the average, use coding for this
+
+
+#Create a new set called new_scores that includes the elements from indices 2 to 6 of the scores vector
+
+```
+
+
+
+#### Problem 3: 
+
+Read section 2.3, then answer the following questions
+
+```{r}
+# Create a vector with the number 1 repeated 5 times. Print it
+
+
+# Create a vector with a sequence of numbers from 1 to 10 with a step of 2. Print it
+
+
+# Create a vector by repeating a sequence from 1 to 3, 2 times. Print it.
+
+
+```
+
+
+
+#### Problem 4
+
+```{r}
+
+mixed_vector <- c(1, "two", 3.0, TRUE, 2)
+
+# Check the class of the vector
+
+## Coerce to numeric and print it 
+
+
+```
+
+
+
