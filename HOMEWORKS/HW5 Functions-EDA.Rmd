@@ -1,0 +1,194 @@
+---
+title: "Homework 5"
+author: "Raul Miranda"
+date: 20 Oct 2025
+output: html_document
+---
+
+#### Setup
+Install and load the necessary packages:
+
+```{r}
+
+library(tidyverse)
+library(dplyr)
+data("mtcars")
+```
+
+#### Functions
+
+1- Create a function named calculate_area_of_circle that takes one parameter, radius, representing the radius of a circle. The function should calculate and return the area using the formula:
+
+area = 𝜋 × radius^2
+
+Test your function with at least two different radii and print the results.
+
+```{r}
+
+calculate_area_of_circle <- function (r) {
+     if (r<0) {return ("Give me a non-negative value please....")}
+     area <- pi * r^2
+   return (area)
+}
+
+print (calculate_area_of_circle (5))
+
+print (calculate_area_of_circle (10))
+
+print (calculate_area_of_circle (0))
+
+print (calculate_area_of_circle (-10))
+```
+
+
+
+2- Write a function called check_temperature that takes a single numeric input temp.
+
+If temp > 30, print "Hot"
+
+If temp >= 15 & temp <= 30, print "Warm"
+
+Otherwise, print "Cold"
+
+Test the function on three different values (e.g., 10, 20, 35).
+
+```{r}
+
+check_temperature <- function (t) {
+  case_when(t>30 ~ 'Hot', t>=15 & t<=30 ~ 'Warm', .default='Cold')
+}
+
+check_temperature (10)
+check_temperature (20)
+check_temperature (35)
+check_temperature (-5)
+
+
+# for practice, lets use if else
+
+check_temperature2 <- function (t) {
+  if (t>30) {return ('Hot')}
+  if (t>=15 & t<=30) {return ('Warm')}
+  else {return ('Cold')}
+} 
+
+check_temperature2 (10)
+check_temperature2 (20)
+check_temperature2 (35)
+check_temperature2 (-5)
+```
+
+
+3- Write a function named sum_odd_numbers that uses a for loop to calculate the sum of all even numbers from 1 to n. The function should return the total sum.  
+
+#### note: I interpret that the function should be called  sum_even_numbers
+
+Test the function with n = 9 and n = 39.
+
+
+```{r}
+# for even numbers:
+
+sum_even_numbers <- function (n) {
+    tot <- 0
+    upto <- n%/%2
+    for (i in 1:upto) {
+      tot <- tot + 2*i
+    }
+    return (tot)
+  }
+
+sum_even_numbers(9)
+sum_even_numbers(39)
+
+
+```
+
+```{r}
+# the following is for practice -
+
+
+# using if 
+
+sum_even_numbers <- function (n) {
+    tot <- 0
+    for (i in 1:n) {
+      if (i %% 2 == 0) { tot <- tot + i}
+    }
+    return (tot)
+}
+
+sum_even_numbers(9)
+sum_even_numbers(10)
+
+sum_odd_numbers <- function (n) {
+    tot <- 0
+    for (i in 1:n) {
+      if (i %% 2 == 1) { tot <- tot + i}
+    }
+    return (tot)
+}
+
+sum_odd_numbers(9)
+sum_odd_numbers(10)
+
+
+# play using remainders
+
+sum_odd_numbers <- function (n) {
+    tot <- 0
+    remainder <- case_when (n%%2==0 ~0, n%%2!=0 ~1)
+    upto <- n%/%2 + remainder
+    for (i in 1:upto) {
+      tot <- tot + 2*i -1
+    }
+    return (tot)
+  }
+
+sum_odd_numbers(9)
+sum_odd_numbers(10)
+sum_odd_numbers(11)
+sum_odd_numbers(12)
+
+```
+
+
+
+
+#### EDA
+
+For this section, use the built-in mtcars dataset (instead of airquality). Perform the following:
+
+- Check the structure of the dataset.
+
+- Display the summary statistics.
+
+- Check for any missing values.
+
+Ask a simple question that can be answered with a basic function (e.g., What is the mean miles per gallon (mpg) across all cars?). Write the code and output the answer.
+
+```{r}
+mtcars               # show the dataframe
+str (mtcars)         # show structure
+summary(mtcars)      # get basic stats
+colSums(is.na(mtcars))    # show count of missing values in each column -- 0
+
+
+# question: what are the mean and median hp across all cars?
+  
+print ( mean (mtcars$hp) )                    # dataset has no NAs, so na.rm=TRUE unnecessary
+print ( median (mtcars$hp) )                  # dataset has no NAs, so na.rm=TRUE unnecessary
+
+
+# or using summarize
+
+mtcars |>
+summarize ( hp_mean = mean (hp),
+            hp_median = median (hp))
+
+
+```
+
+### Published 
+
+Published at: https://rpubs.com/rmiranda/1357863
